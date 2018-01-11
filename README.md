@@ -1,10 +1,10 @@
 # BioEM:  Bayesian inference of Electron Microscopy
-# 1.0 VERSION: June, 2016
+# 2.0 VERSION: January, 2018
 
 ## Build status and test coverage
 
-[![Build status](https://gitlab.mpcdf.mpg.de/MPIBP-Hummer/BioEM/badges/master/build.svg)](https://gitlab.mpcdf.mpg.de/sluka/BioEM/commits/master)
-[![Code coverage](https://gitlab.mpcdf.mpg.de/MPIBP-Hummer/BioEM/badges/master/coverage.svg?job=total_coverage)](http://sluka.pages.mpcdf.de/BioEM/)
+[![Build status](https://gitlab.mpcdf.mpg.de/MPIBP-Hummer/BioEM/badges/master/build.svg)](https://gitlab.mpcdf.mpg.de/MPIBP-Hummer/BioEM/commits/master)
+[![Code coverage](https://gitlab.mpcdf.mpg.de/MPIBP-Hummer/BioEM/badges/master/coverage.svg?job=total_coverage)](http://MPIBP-Hummer.pages.mpcdf.de/BioEM/)
 [![Doc](https://readthedocs.org/projects/pip/badge/?version=stable)](http://bioem.readthedocs.io)
 [![License: GPL v3][license-badge]](License.txt)
 
@@ -28,7 +28,7 @@ The BioEM software computes this integral via numerical grid sampling over a por
 By comparing the BioEM posterior probabilities it is possible to discriminate and rank structural models, allowing to characterize
 the variability and dynamics of the biological system.
 
-For a detailed description of the BioEM software see the BioEM_Maunal.pdf that is provided in the Manual directory.
+For a detailed description of the BioEM software see the [BioEM documentation](http://bioem.readthedocs.io), also provided in the doc/ directory.
 
 ### Command line input & help is found by just running the compiled executable ./bioEM
 
@@ -47,7 +47,7 @@ For a detailed description of the BioEM software see the BioEM_Maunal.pdf that i
 	  --OutputFile      arg (Optional) For changing the outputfile name
 	  --help                (Optional) Produce help message
 
-Details for the inputfiles and formats are provided in chapters 1 and 2 of the BioEM_Manual.pdf.
+Details for the inputfiles and formats are provided in sections [1](http://bioem.readthedocs.io/en/latest/manual.html#) and [2](http://bioem.readthedocs.io/en/latest/manual.html#bioem-input) of the [BioEM documentation](http://bioem.readthedocs.io).
 
 ### Output
 
@@ -59,12 +59,12 @@ Details for the inputfiles and formats are provided in chapters 1 and 2 of the B
 
      **Important: It is recommended to compare log(P) with respect to other Models or to Noise as in [1].
 
-* (Optional) Write the posterior probabilities as a function of the orientations (key word: WRITE_PROB_ANGLES in InputFile, see BioEM_Manual.pdf).
+* (Optional) Write the posterior probabilities as a function of the orientations (key word: WRITE_PROB_ANGLES in InputFile, see [documentation](http://bioem.readthedocs.io/en/latest/manual.html#std:inpar-WRITE_PROB_ANGLES)).
 
 ### Tutorial
  
 A directory with example EM particles, models, and input files are provided in the Tutorial_BioEM directory. 
-The tutorial is described in chapter 4 of the BioEM_Manual.pdf 
+The tutorial is described in [section 4 of the BioEM documentation](http://bioem.readthedocs.iohttp://bioem.readthedocs.io/en/latest/manual.html#tutorial). 
 
 
 ### Installation
@@ -113,7 +113,7 @@ For details on the installation chapter 1 of the BioEM_Manual.pdf.
 
 The BioEM performance variables enhance or modify the code's computational performance without modifying the numerical results.
 They should be tuned for the specific computing node characteristics where bioEM is executed, e.g., select the number of GPUs to use, OpenMP 
-threads etc. These are passed via environment variables. See chapter 3 of the BioEM_Manual.pdf for a detailed description.
+threads etc. These are passed via environment variables. See [section 4 of the BioEM documentation](http://bioem.readthedocs.iohttp://bioem.readthedocs.io/en/latest/manual.html#performance) for a detailed description.
 
 ### License 
 
