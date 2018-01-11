@@ -91,36 +91,37 @@ todo_include_todos = True
 # a list of builtin themes.
 #
 
-# Change from Alabaster to RTD theme, check
+# Change from Alabaster to RTD to sphinxdoc theme, check
 # https://sphinx-rtd-theme.readthedocs.io/en/latest/ for more details
 #html_theme = 'alabaster'
-html_theme = 'sphinx_rtd_theme'
-html_theme_path = ["_themes", ]
+#html_theme = 'sphinx_rtd_theme'
+#html_theme_path = ["_themes", ]
+html_theme = 'sphinxdoc'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
 
-# Change from Alabaster to RTD theme, check
+# Change from Alabaster to RTD to sphinxdoc theme, check
 # https://sphinx-rtd-theme.readthedocs.io/en/latest/ for more details
 # html_theme_options = {}
-html_theme_options = {
-    'typekit_id': '',
-    'canonical_url': '',
-    'analytics_id': '',
-    'logo_only': False,
-    'display_version': True,
-#    'prev_next_buttons_location': bottom,
-    'prev_next_buttons_location': None,
-    'style_external_links': False,
-    # Toc options
-    'collapse_navigation': False,
-    'sticky_navigation': True,
-    'navigation_depth': 3,
-    'includehidden': True,
-    'titles_only': False
-}
+# html_theme_options = {
+#     'typekit_id': '',
+#     'canonical_url': '',
+#     'analytics_id': '',
+#     'logo_only': False,
+#     'display_version': True,
+# #    'prev_next_buttons_location': bottom,
+#     'prev_next_buttons_location': None,
+#     'style_external_links': False,
+#     # Toc options
+#     'collapse_navigation': False,
+#     'sticky_navigation': True,
+#     'navigation_depth': 3,
+#     'includehidden': True,
+#     'titles_only': False
+# }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -133,7 +134,7 @@ html_static_path = ['_static']
 # This is required for the alabaster theme
 # refs: http://alabaster.readthedocs.io/en/latest/installation.html#sidebars
 
-# Change from Alabaster to RTD theme, check
+# Change from Alabaster to RTD to sphinxdoc theme, check
 # https://sphinx-rtd-theme.readthedocs.io/en/latest/ for more details
 # html_sidebars = {
 #     '**': [
