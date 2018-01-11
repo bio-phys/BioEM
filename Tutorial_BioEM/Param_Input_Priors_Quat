@@ -1,0 +1,17 @@
+##### Micrograph Parameters #######
+NUMBER_PIXELS 220
+PIXEL_SIZE 1.77
+
+USE_QUATERNIONS
+
+##### Constrast transfer integration: #######
+CTF_B_FACTOR 100.0 300.5 2
+CTF_DEFOCUS 1.0 6.0 5
+CTF_AMPLITUDE 0.1 0.1 1
+
+##### Center displacement: #######
+DISPLACE_CENTER 10 2
+
+####### Priors ###############
+PRIOR_MODEL 0.005
+PRIOR_ANGLES

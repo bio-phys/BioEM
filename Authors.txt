@@ -1,0 +1,13 @@
+=======================
+ Authors of BioEM
+=======================
+
+*** v2.0 in 2017
+
+Pilar Cossio
+David Rohr
+Fabio Barruffa
+Luka Stanisic
+Markus Rampp
+Volker Lindenstruth
+Gerhard Hummer

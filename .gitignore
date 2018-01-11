@@ -1,0 +1,7 @@
+example*
+CMakeCache.txt
+CMakeFiles
+Makefile
+bioEM
+cmake_install.cmake
+project

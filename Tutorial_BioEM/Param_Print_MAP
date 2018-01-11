@@ -1,0 +1,36 @@
+##### Micrograph Parameters #######
+
+NUMBER_PIXELS 220
+PIXEL_SIZE 1.77
+
+######## Center displacement ################
+BEST_DX -10
+BEST_DY 5
+
+######## Normalization and Offset ################
+BEST_NORM 0.03
+BEST_OFFSET -0.001
+
+######## Euler Angles ################
+BEST_ALPHA -0.464793
+BEST_GAMMA -0.409391
+BEST_BETA 1.97283
+
+######## Using PSF ################
+#USE_PSF
+BEST_PSF_ENVELOPE 0.0002
+BEST_PSF_PHASE 0.004
+BEST_PSF_AMP 1
+
+##### Using CTF #######
+BEST_CTF_B_ENV 200.5
+BEST_CTF_DEFOCUS 3.5
+BEST_CTF_AMP 0.3
+
+######## ADDING NOISE ###########
+### In this case the standard deviation of the noise is 6.476
+WITHNOISE 6.476
+
+
+########## Printing the 3d Model rotation ###########
+#PRINT_ROTATED_MODELS
