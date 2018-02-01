@@ -239,14 +239,14 @@ Download
 ~~~~~~~~
 
 The BioEM software can be cloned using *git* from
-https://gitlab.mpcdf.mpg.de/MPIBP-Hummer/BioEM/ with
+https://github.com/bio-phys/BioEM with
 
 .. code-block:: bash
 
-   git clone https://gitlab.mpcdf.mpg.de/MPIBP-Hummer/BioEM/
+   git clone https://github.com/bio-phys/BioEM
 
 A compressed directory of the BioEM software can be also directly
-downloaded from https://gitlab.mpcdf.mpg.de/MPIBP-Hummer/BioEM/. After
+downloaded from https://github.com/bio-phys/BioEM. After
 downloading the *zip* file, uncompress it by executing
 
 .. code-block:: bash
