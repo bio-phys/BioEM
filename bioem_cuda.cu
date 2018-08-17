@@ -1002,12 +1002,6 @@ int bioem_cuda::deviceStartRun()
         cout << "Error planning CUFFT\n";
         exit(1);
       }
-      if (cufftSetCompatibilityMode(
-              plan[i][j], CUFFT_COMPATIBILITY_FFTW_PADDING) != CUFFT_SUCCESS)
-      {
-        cout << "Error planning CUFFT compatibility\n";
-        exit(1);
-      }
       if (cufftSetStream(plan[i][j], cudaStream[j]) != CUFFT_SUCCESS)
       {
         cout << "Error setting CUFFT stream\n";

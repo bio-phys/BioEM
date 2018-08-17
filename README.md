@@ -17,7 +17,7 @@ Pilar Cossio, David Rohr, Fabio Baruffa, Markus Rampp, Luka Stanisic, Volker Lin
 
 * [Cossio, P and Hummer, G. J Struct Biol. 2013 Dec;184(3):427-37. doi: 10.1016/j.jsb.2013.10.006.](http://www.ncbi.nlm.nih.gov/pubmed/24161733)
 
-* Cossio, P., Rohr, D., Baruffa, F., Rampp, M., Lindenstruth, V. and Hummer, G. "BioEM: GPU-accelerated computing of Bayesian inference of electron microscopy images" Comp. Phys. Comm accepted, [arXiv:1609.06634](https://arxiv.org/abs/1609.06634)
+* Cossio, P., Rohr, D., Baruffa, F., Rampp, M., Lindenstruth, V. and Hummer, G. "BioEM: GPU-accelerated computing of Bayesian inference of electron microscopy images"  [Computer Physics Communications, 210C, 163-171 (2017)](http://dx.doi.org/10.1016/j.cpc.2016.09.014), [arXiv:1609.06634](https://arxiv.org/abs/1609.06634)
 
 ## Description
 
