@@ -946,7 +946,7 @@ int bioem_cuda::deviceExit()
 
   delete gpumap;
   delete initialized_const;
-  cudaThreadExit();
+  cudaDeviceReset();
 
   deviceInitialized = 0;
   return (0);
@@ -1037,7 +1037,7 @@ int bioem_cuda::deviceFinishRun()
       break;
   }
 
-  cudaThreadSynchronize();
+  cudaDeviceSynchronize();
   if (GPUWorkload < 100)
   {
     pProb.copyFrom(pProb_host, *this);
