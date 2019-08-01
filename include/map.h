@@ -53,12 +53,14 @@ public:
   int precalculate(bioem_param &param, bioem &bio);
   int PreCalculateMapsFFT(bioem_param &param);
 
-  int read_int(int *currlong, FILE *fin, int swap);
-  int read_float(float *currfloat, FILE *fin, int swap);
-  int read_float_empty(FILE *fin);
-  int read_char_float(float *currfloat, FILE *fin);
-  int test_mrc(const char *vol_file, int swap);
+  void readBinaryMaps();
+  void writeBinaryMaps();
+  void readMRCMaps(bioem_param &param, const char *filemap);
+  void readTextMaps(bioem_param &param, const char *filemap);
+
   int read_MRC(const char *filename, bioem_param &param);
+  int read_one_MRC(const char *filename, bioem_param &param, int offset,
+                   int swap, int nc, int nr, int ns, int nsymbt);
 
   mycomplex_t *RefMapsFFT;
 
@@ -95,8 +97,8 @@ public:
 
   void init(const bioem_RefMap &map)
   {
-    maps = (myfloat_t *) malloc(map.refMapSize * map.ntotRefMap *
-                                sizeof(myfloat_t));
+    maps = (myfloat_t *) mallocchk(map.refMapSize * map.ntotRefMap *
+                                   sizeof(myfloat_t));
 #pragma omp parallel for
     for (int i = 0; i < map.ntotRefMap; i++)
     {

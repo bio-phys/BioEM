@@ -65,7 +65,6 @@ public:
   bool showrotatemod;
   bool notnormmap;
   bool usepsf;
-  bool ignorepointsout;
   bool ignorePDB;
 
   myfloat_t elecwavel;

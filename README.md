@@ -1,11 +1,11 @@
 # BioEM:  Bayesian inference of Electron Microscopy
-# 2.0 VERSION: January, 2018
+# 2.1 VERSION: July, 2019
 
 ## Build status and test coverage
 
 [![Build status](https://gitlab.mpcdf.mpg.de/MPIBP-Hummer/BioEM/badges/master/build.svg)](https://gitlab.mpcdf.mpg.de/MPIBP-Hummer/BioEM/commits/master)
 [![Code coverage](https://gitlab.mpcdf.mpg.de/MPIBP-Hummer/BioEM/badges/master/coverage.svg?job=total_coverage)](http://MPIBP-Hummer.pages.mpcdf.de/BioEM/)
-[![Doc](https://readthedocs.org/projects/pip/badge/?version=stable)](http://bioem.readthedocs.io)
+[![Doc](https://readthedocs.org/projects/bioem/badge/)](http://bioem.readthedocs.io)
 [![License: GPL v3][license-badge]](License.txt)
 
 
@@ -40,10 +40,14 @@ For a detailed description of the BioEM software see the [BioEM documentation](h
 	  --Inputfile       arg (Mandatory) Name of input parameter file
 	  --ReadOrientation arg (Optional) Read file name containing orientations
 	  --ReadPDB             (Optional) If reading model file in PDB format
+	  --ReadModelMRC        (Optional) If reading model file in MRC format
 	  --ReadMRC             (Optional) If reading particle file in MRC format
-	  --ReadMultipleMRC     (Optional) If reading Multiple MRCs
+	  --ReadMultipleMRC     (Optional) If reading multiple MRCs
 	  --DumpMaps            (Optional) Dump maps after they were read from particle-image file
 	  --LoadMapDump         (Optional) Read Maps from dump option
+	  --DumpModel           (Optional) Dump model after it was read from model file
+	  --LoadModelDump       (Optional) Read model from dump option
+	  --PrintCOORDREAD      (Optional) Print model coordinates
 	  --OutputFile      arg (Optional) For changing the outputfile name
 	  --help                (Optional) Produce help message
 
@@ -52,9 +56,9 @@ Details for the inputfiles and formats are provided in sections [1](http://bioem
 ### Output
 
 * Main output file with, default name "Output_Probabilities", provides the posterior probability for each image, as well as the parameters that give a maximum value of the posterior:
-     
+
      RefMap #(number Particle Map) Probability  #(log(P))
-     
+
      RefMap #(number Particle Map) Maximizing Param: #(Euler Angles) #(PSF parameters) #(center displacement)
 
      **Important: It is recommended to compare log(P) with respect to other Models or to Noise as in [1].
@@ -62,8 +66,8 @@ Details for the inputfiles and formats are provided in sections [1](http://bioem
 * (Optional) Write the posterior probabilities as a function of the orientations (key word: WRITE_PROB_ANGLES in InputFile, see [documentation](http://bioem.readthedocs.io/en/latest/index.html#std:inpar-WRITE_PROB_ANGLES)).
 
 ### Tutorial
- 
-A directory with example EM particles, models, and input files are provided in the Tutorial_BioEM directory. 
+
+A directory with example EM particles, models, and input files are provided in the Tutorial_BioEM directory of the [BioEM-tutorials subproject](https://github.com/bio-phys/BioEM-tutorials).
 The tutorial is described in [section 4 of the BioEM documentation](http://bioem.readthedocs.io/en/latest/index.html#tutorial). 
 
 
@@ -85,24 +89,24 @@ make VERBOSE=1
 Dependencies and software requirements:
 
 * Compiler: a modern C++ compiler which is OpenMP compliant
-              and (optionally) complies with CUDAs nvcc
-              (tested with Intel icpc 12-16, GCC 4.7-5.1)
-    -> adapt the name of the compiler using ccmake 
+       and (optionally) complies with CUDAs nvcc
+       (tested with Intel icpc 12-16, GCC 4.7-5.1)
+    -> adapt the name of the compiler using ccmake
 
     for free software see: https://gcc.gnu.org/
 
 * MPI: the Message Passing Standard library
-         (tested with Intel MPI 4.1-5.1, IBM PE 1.3-1.4)
-    -> adapt the names of the MPI compiler wrappers using ccmake 
+       (tested with Intel MPI 4.1-5.1, IBM PE 1.3-1.4)
+    -> adapt the names of the MPI compiler wrappers using ccmake
 
     for free software see: http://www.open-mpi.de/
-          
+
 * FFTW: a serial but fully thread-safe fftw3 installation or equivalent (tested with fftw 3.3)
      -> point environment variable $FFTW_ROOT to a FFTW3 installation or use ccmake to specify
 
-    for free software see: http://www.fftw.org 
+    for free software see: http://www.fftw.org
 
-* CUDA (required to build and run the GPU version) 
+* CUDA (required to build and run the GPU version)
 
     for free software see: https://developer.nvidia.com/cuda-downloads
 
@@ -115,7 +119,7 @@ The BioEM performance variables enhance or modify the code's computational perfo
 They should be tuned for the specific computing node characteristics where bioEM is executed, e.g., select the number of GPUs to use, OpenMP 
 threads etc. These are passed via environment variables. See [section 4 of the BioEM documentation](http://bioem.readthedocs.io/en/latest/index.html#performance) for a detailed description.
 
-### License 
+### License
 
 The BioEM program is a free software, under the terms of the GNU General Public License as published by the Free Software Foundation, version 3 of the License. 
 This program is distributed in the hope that it will be useful, but without any warranty.  See License.txt for more details.

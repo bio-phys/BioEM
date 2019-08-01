@@ -27,6 +27,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <vector>
 
 #ifdef WITH_OPENMP
 #include <omp.h>
@@ -34,64 +35,173 @@
 
 #include "bioem.h"
 #include "map.h"
+#include "mrc.h"
 #include "param.h"
 
 using namespace std;
 
-int bioem_RefMap::readRefMaps(bioem_param &param, const char *filemap)
+//************** Loading Map from Binary file *******
+void bioem_RefMap::readBinaryMaps()
 {
-  numPixels = param.param_device.NumberPixels;
-  refMapSize =
-      param.param_device.NumberPixels * param.param_device.NumberPixels;
-  // **************************************************************************************
-  // ***********************Reading reference Particle
-  // Maps************************
-  // **************************************************************************************
-  int allocsize = 0;
-  if (param.loadMap)
+  FILE *fp = fopen(FILE_MAPS_DUMP, "rb");
+  if (fp == NULL)
   {
-    //************** Loading Map from Binary file *******
-    FILE *fp = fopen("maps.dump", "rb");
-    if (fp == NULL)
-    {
-      cout << "Error opening dump file\n";
-      exit(1);
-    }
-    size_t elements_read;
-    elements_read = fread(&ntotRefMap, sizeof(ntotRefMap), 1, fp);
-    if (elements_read != 1)
-    {
-      cout << "Error reading file\n";
-      exit(1);
-    }
-    maps = (myfloat_t *) mallocchk(ntotRefMap * refMapSize * sizeof(myfloat_t));
-    elements_read = fread(maps, sizeof(myfloat_t) * refMapSize, ntotRefMap, fp);
-    if (elements_read != (size_t) ntotRefMap)
-    {
-      cout << "Error reading file\n";
-      exit(1);
-    }
-
-    fclose(fp);
-
-    cout << "Particle Maps read from Map Dump\n";
+    myError("Opening dump file");
   }
-  else if (readMRC)
+  size_t elements_read;
+  elements_read = fread(&ntotRefMap, sizeof(ntotRefMap), 1, fp);
+  if (elements_read != 1)
   {
-    //************** Reading MRC file *******
-    ntotRefMap = 0;
+    myError("Reading file");
+  }
+  maps = (myfloat_t *) mallocchk(ntotRefMap * refMapSize * sizeof(myfloat_t));
+  elements_read = fread(maps, sizeof(myfloat_t) * refMapSize, ntotRefMap, fp);
+  if (elements_read != (size_t) ntotRefMap)
+  {
+    myError("Reading file");
+  }
+  fclose(fp);
+  cout << "Particle Maps read from Map Dump\n";
+}
 
+//************* Dumping Maps *********************
+void bioem_RefMap::writeBinaryMaps()
+{
+  FILE *fp = fopen(FILE_MAPS_DUMP, "w+b");
+  if (fp == NULL)
+  {
+    myError("Opening dump file");
+  }
+  fwrite(&ntotRefMap, sizeof(ntotRefMap), 1, fp);
+  fwrite(maps, sizeof(myfloat_t) * refMapSize, ntotRefMap, fp);
+  fclose(fp);
+}
+
+//************** Reading MRC file *******
+void bioem_RefMap::readMRCMaps(bioem_param &param, const char *filemap)
+{
+  ntotRefMap = 0;
+
+  if (READ_PARALLEL &&
+      readMultMRC) // reading MRC files in parallel (using the new routine)
+  {
+    //************** Getting list of multiple MRC files *************
+    cout << "Opening File with MRC list names: " << filemap << "\n";
+    ifstream input(filemap);
+    if (!input.good())
+    {
+      myError("Failed to open file contaning MRC names: %s", filemap);
+    }
+
+    char line[512] = {0};
+    char mapname[100];
+    char tmpm[10] = {0};
+    std::vector<string> fileNames;
+    int nFiles = 0;
+
+    while (input.getline(line, 512))
+    {
+      char tmpVals[100] = {0};
+
+      string strline(line);
+
+      // Check if filename ends with .mrc
+      size_t foundpos = strline.find("mrc");
+      size_t endpos = strline.find_last_not_of(" \t");
+      if (foundpos > endpos)
+      {
+        myWarning("MRC extension NOT detected in file name: %s. "
+                  "Are you sure you want to read an MRC?",
+                  filemap);
+      }
+
+      strncpy(tmpVals, line, 99);
+      mySscanf(1, tmpVals, "%99c", mapname);
+
+      // Check for last line
+      strncpy(tmpm, mapname, 3);
+
+      if (strcmp(tmpm, "XXX") != 0)
+      {
+        // Added for parallel read
+        fileNames.push_back(strline);
+        nFiles++;
+      }
+
+      for (int i = 0; i < 3; i++)
+        mapname[i] = 'X';
+      for (int i = 3; i < 100; i++)
+        mapname[i] = 0;
+    }
+
+    //************** Reading multiple MRC files *************
+    printf("\n+++++++++++++++++++++++++++++++++++++++++++\n");
+    // Allocate data structures for each file
+    int numMaps = 0;
+    int *swap = (int *) mallocchk(sizeof(int) * nFiles);
+    int *nc = (int *) mallocchk(sizeof(int) * nFiles);
+    int *nr = (int *) mallocchk(sizeof(int) * nFiles);
+    int *ns = (int *) mallocchk(sizeof(int) * nFiles);
+    int *nsymbt = (int *) mallocchk(sizeof(int) * nFiles);
+    int *offsets = (int *) mallocchk(sizeof(int) * nFiles);
+    // Parallel read
+#pragma omp parallel
+    {
+      const int num = omp_get_thread_num();
+// Get the number of maps in each file
+#pragma omp for
+      for (int i = 0; i < nFiles; i++)
+      {
+        printf("Reading Information from MRC: %s (thread %d)\n",
+               fileNames[i].c_str(), num);
+        check_one_MRC(fileNames[i].c_str(), &swap[i], &nc[i], &nr[i], &ns[i],
+                      &nsymbt[i]);
+      }
+// Allocate maps and compute starting position for each thread
+#pragma omp single
+      {
+        for (int i = 0; i < nFiles; i++)
+        {
+          offsets[i] = numMaps;
+          numMaps += ns[i];
+        }
+        maps =
+            (myfloat_t *) mallocchk(refMapSize * sizeof(myfloat_t) * numMaps);
+      }
+// Get the number of maps in each file
+#pragma omp for
+      for (int i = 0; i < nFiles; i++)
+      {
+        read_one_MRC(fileNames[i].c_str(), param, offsets[i], swap[i], nc[i],
+                     nr[i], ns[i], nsymbt[i]);
+      }
+    }
+
+    // Cleanup
+    fileNames.clear();
+    free(swap);
+    free(nc);
+    free(nr);
+    free(ns);
+    free(nsymbt);
+    free(offsets);
+    ntotRefMap = numMaps;
+
+    cout << "\n+++++++++++++++++++++++++++++++++++++++++++ \n";
+    cout << "Particle Maps read from MULTIPLE MRC Files in: " << filemap
+         << "\n";
+  }
+  else // reading MRC files in sequentially (using the old routine)
+  {
     if (readMultMRC)
     {
-
-      //************** Reading Multiple MRC files *************
+      //************** Reading multiple MRC files *************
       cout << "Opening File with MRC list names: " << filemap << "\n";
       ifstream input(filemap);
 
       if (!input.good())
       {
-        cout << "Failed to open file contaning MRC names: " << filemap << "\n";
-        exit(1);
+        myError("Failed to open file contaning MRC names: %s", filemap);
       }
 
       char line[512] = {0};
@@ -99,17 +209,16 @@ int bioem_RefMap::readRefMaps(bioem_param &param, const char *filemap)
       char tmpm[10] = {0};
       const char *indifile;
 
-      while (!input.eof())
+      while (input.getline(line, 512))
       {
-        input.getline(line, 511);
         char tmpVals[100] = {0};
 
         string strline(line);
 
-        //	 cout << "MRC File name:" << strline << "\n";
+        // cout << "MRC File name:" << strline << "\n";
 
         strncpy(tmpVals, line, 99);
-        sscanf(tmpVals, "%99c", mapname);
+        mySscanf(1, tmpVals, "%99c", mapname);
 
         // Check for last line
         strncpy(tmpm, mapname, 3);
@@ -121,7 +230,7 @@ int bioem_RefMap::readRefMaps(bioem_param &param, const char *filemap)
           //   size_t foundpos= strline.find("mrc");
           //   size_t endpos = strline.find_last_not_of(" \t");
 
-          // Reading Multiple MRC
+          // Reading multiple MRC
           read_MRC(indifile, param);
         }
         for (int i = 0; i < 3; i++)
@@ -143,9 +252,9 @@ int bioem_RefMap::readRefMaps(bioem_param &param, const char *filemap)
 
       if (foundpos > endpos)
       {
-        cout << "Warining:::: mrc extension NOT dectected in file name::"
-             << filemap << " \n";
-        cout << "Warining::::  Are you sure you want to read an MRC? \n";
+        myWarning("MRC extension NOT detected in file name: %s. "
+                  "Are you sure you want to read an MRC?",
+                  filemap);
       }
 
       read_MRC(filemap, param);
@@ -153,29 +262,176 @@ int bioem_RefMap::readRefMaps(bioem_param &param, const char *filemap)
       cout << "Particle Maps read from ONE MRC File: " << filemap << "\n";
     }
   }
-  else
+}
+
+//************** Reading Text file *************
+void bioem_RefMap::readTextMaps(bioem_param &param, const char *filemap)
+{
+  if (READ_PARALLEL) // reading textual file in parallel
   {
-    //************** Reading Text file *************
-    int nummap = -1;
-    int lasti = 0;
-    int lastj = 0;
+    FILE *file = fopen(filemap, "r");
+    if (file == NULL)
+    {
+      myError("Opening file: %s", filemap);
+    }
+
+    long lSize, size;
+    char *buffer;
+
+    // Obtain file size
+    fseek(file, 0, SEEK_END);
+    lSize = ftell(file);
+    rewind(file);
+
+    // Allocate memory to contain the whole file
+    buffer = (char *) mallocchk(sizeof(char) * lSize);
+    if (buffer == NULL)
+    {
+      myError("Memory error");
+    }
+
+    // Copy the file into the buffer
+    size = fread(buffer, 1, lSize, file);
+    if (size != lSize)
+    {
+      myError("Reading error")
+    }
+
+    // Checking that the file starts with "PARTICLE"
+    char firstToken[9] = {0};
+    strncpy(firstToken, buffer, 8);
+    if (strcmp(firstToken, "PARTICLE") != 0)
+    {
+      myError("Missing correct standard map format: PARTICLE HEADER");
+    }
+
+    // Parallel read
+    int nthreads;
+    std::vector<long> *particleStarts;
+    int *nlines;
+    int *offsets;
+    int nummap = 0;
+#pragma omp parallel
+    {
+      nthreads = omp_get_max_threads();
+      const int num = omp_get_thread_num();
+// Allocate local data structures
+#pragma omp single
+      {
+        particleStarts = new vector<long>[nthreads];
+        nlines = (int *) callocchk(sizeof(int) * nthreads);
+        offsets = (int *) mallocchk(sizeof(int) * nthreads);
+      }
+// Get the number of lines and end of line position
+#pragma omp for
+      for (long i = 0; i < size - 1; i++)
+      {
+        if (buffer[i] == 'P')
+        {
+          char token[9] = {0};
+          strncpy(token, buffer + i, 8);
+          if (strcmp(token, "PARTICLE") == 0)
+          {
+            nlines[num]++;
+            particleStarts[num].push_back(i);
+          }
+        }
+      }
+// Allocate points and compute starting position for each thread
+#pragma omp single
+      {
+        for (int i = 0; i < nthreads; i++)
+        {
+          offsets[i] = nummap;
+          nummap += nlines[i];
+        }
+        maps = (myfloat_t *) mallocchk(refMapSize * sizeof(myfloat_t) * nummap);
+      }
+// Parallel parsing of the input file
+#pragma omp for
+      for (int i = 0; i < nthreads; i++)
+      {
+        int lMap = offsets[i];
+        for (std::vector<long>::const_iterator j = particleStarts[i].begin();
+             j != particleStarts[i].end(); j++)
+        {
+          // start of the next line
+          long k = *j + 8;
+          while (buffer[k] != '\n')
+            k++;
+          k++;
+          // map variables
+          char tmpVals[33] = {0};
+          int i_coor = 0;
+          int j_coor = 0;
+          double z = 0.0;
+          int countpix = 0;
+          // Parse single particle
+          while (k < size && buffer[k] != 'P')
+          {
+            strncpy(tmpVals, buffer + k, 32);
+            k += 33;
+            mySscanf(3, tmpVals, "%d %d %lf", &i_coor, &j_coor, &z);
+            // checking for Map limits
+            if (i_coor > -1 && i_coor < numPixels && j_coor > -1 &&
+                j_coor < numPixels)
+            {
+              countpix++;
+              maps[lMap * refMapSize + i_coor * numPixels + j_coor] =
+                  (myfloat_t) z;
+            }
+            else
+            {
+              myError("Reading map (Map number %d, i %d, j %d)", lMap, i_coor,
+                      j_coor);
+            }
+          }
+          // Verifying input consistency
+          if (i_coor != numPixels - 1 || j_coor != numPixels - 1 ||
+              countpix != refMapSize)
+          {
+            myError("Inconsistent number of pixels in maps and inputfile "
+                    "( %d, i %d, j %d)",
+                    countpix, i_coor, j_coor);
+          }
+          // Occasionally print which map is being processed
+          if (lMap % 128 == 0)
+          {
+            printf("...%d (thread %d)\n", lMap, num);
+          }
+          lMap++;
+        }
+      }
+    }
+    // Cleanup
+    free(buffer);
+    delete[] particleStarts;
+    free(nlines);
+    free(offsets);
+
+    fclose(file);
+    ntotRefMap = nummap;
+  }
+  else // reading textual file sequentially
+  {
     ifstream input(filemap);
     if (!input.good())
     {
-      cout << "Particle Maps Failed to open file" << endl;
-      exit(1);
+      myError("Particle maps failed to open file");
     }
 
     char line[512] = {0};
     char tmpLine[512] = {0};
     bool first = true;
 
+    int nummap = -1;
+    int lasti = 0;
+    int lastj = 0;
     int countpix = 0;
+    int allocsize = 0;
 
-    while (!input.eof())
+    while (input.getline(line, 512))
     {
-      input.getline(line, 511);
-
       strncpy(tmpLine, line, strlen(line));
       char *token = strtok(tmpLine, " ");
 
@@ -183,9 +439,7 @@ int bioem_RefMap::readRefMaps(bioem_param &param, const char *filemap)
       {
         if (strcmp(token, "PARTICLE") != 0)
         {
-          cout << "Missing correct Standard Map Format: PARTICLE HEADER\n"
-               << endl;
-          exit(1);
+          myError("Missing correct standard map format: PARTICLE HEADER");
         }
         first = false;
       }
@@ -210,88 +464,84 @@ int bioem_RefMap::readRefMaps(bioem_param &param, const char *filemap)
         {
           cout << "..." << nummap << "\n";
         }
-        if (lasti + 1 != param.param_device.NumberPixels &&
-            lastj + 1 != param.param_device.NumberPixels && nummap > 0)
+        if (lasti + 1 != numPixels && lastj + 1 != numPixels && nummap > 0)
         {
-          cout << "PROBLEM INCONSISTENT NUMBER OF PIXELS IN MAPS AND INPUTFILE "
-                  "( "
-               << param.param_device.NumberPixels << ", i " << lasti << ", j "
-               << lastj << ")"
-               << "\n";
-          exit(1);
+          myError("Inconsistent number of pixels in maps and inputfile "
+                  "( %d, i %d, j %d)",
+                  numPixels, lasti, lastj);
         }
       }
       else
       {
         int i, j;
-        float z;
+        double z;
 
         char tmpVals[36] = {0};
 
         strncpy(tmpVals, line, 8);
-        sscanf(tmpVals, "%d", &i);
+        mySscanf(1, tmpVals, "%d", &i);
 
         strncpy(tmpVals, line + 8, 8);
-        sscanf(tmpVals, "%d", &j);
+        mySscanf(1, tmpVals, "%d", &j);
 
         strncpy(tmpVals, line + 16, 16);
-        sscanf(tmpVals, "%f", &z);
+        mySscanf(1, tmpVals, "%lf", &z);
         // checking for Map limits
-        if (i > -1 && i < param.param_device.NumberPixels && j > -1 &&
-            j < param.param_device.NumberPixels)
+        if (i > -1 && i < numPixels && j > -1 && j < numPixels)
         {
           countpix++;
           maps[nummap * refMapSize + i * numPixels + j] = (myfloat_t) z;
           lasti = i;
           lastj = j;
-          //	 cout << countpix << " " <<
-          // param.param_device.NumberPixels*param.param_device.NumberPixels <<
-          //"\n";
         }
         else
         {
-          cout << "PROBLEM READING MAP (Map number " << nummap << ", i " << i
-               << ", j " << j << ")"
-               << "\n";
-          exit(1);
+          myError("Reading map (Map number %d, i %d, j %d)", nummap, i, j);
         }
       }
     }
-    if (lasti != param.param_device.NumberPixels - 1 ||
-        lastj != param.param_device.NumberPixels - 1 ||
-        countpix !=
-            param.param_device.NumberPixels * param.param_device.NumberPixels +
-                1)
+
+    if (lasti != numPixels - 1 || lastj != numPixels - 1 ||
+        countpix != refMapSize)
     {
-      cout << "PROBLEM INCONSISTENT NUMBER OF PIXELS IN MAPS AND INPUTFILE ( "
-           << param.param_device.NumberPixels << ", i " << lasti << ", j "
-           << lastj << ")"
-           << "\n";
-      exit(1);
+      myError("Inconsistent number of pixels in maps and inputfile "
+              "( %d, i %d, j %d)",
+              countpix, lasti, lastj);
     }
-    cout << ".";
     ntotRefMap = nummap + 1;
     maps = (myfloat_t *) reallocchk(maps, refMapSize * sizeof(myfloat_t) *
                                               ntotRefMap);
-    cout << "Particle Maps read from Standard File: " << ntotRefMap << "\n";
   }
 
-  //************* If Dumping Maps *********************
+  cout << ".";
+  cout << "Particle Maps read from Standard File: " << ntotRefMap << "\n";
+}
+
+int bioem_RefMap::readRefMaps(bioem_param &param, const char *filemap)
+{
+  // *************** Reading reference Particle Maps ************
+  numPixels = param.param_device.NumberPixels;
+  refMapSize = numPixels * numPixels;
+
+  if (param.loadMap)
+  {
+    readBinaryMaps();
+  }
+  else if (readMRC)
+  {
+    readMRCMaps(param, filemap);
+  }
+  else
+  {
+    readTextMaps(param, filemap);
+  }
+
   if (param.dumpMap)
   {
-    FILE *fp = fopen("maps.dump", "w+b");
-    if (fp == NULL)
-    {
-      cout << "Error opening dump file\n";
-      exit(1);
-    }
-    fwrite(&ntotRefMap, sizeof(ntotRefMap), 1, fp);
-    fwrite(maps, sizeof(myfloat_t) * refMapSize, ntotRefMap, fp);
-    fclose(fp);
+    writeBinaryMaps();
   }
 
   //*********** To Debug with few Maps ********************
-
   if (getenv("BIOEM_DEBUG_NMAPS"))
   {
     ntotRefMap = atoi(getenv("BIOEM_DEBUG_NMAPS"));
@@ -433,8 +683,7 @@ int bioem_RefMap::read_MRC(const char *filename, bioem_param &param)
   fin = fopen(filename, "rb");
   if (fin == NULL)
   {
-    cout << "ERROR opening MRC: " << filename;
-    exit(1);
+    myError("Opening MRC: %s", filename);
   }
   n_range_viol0 = test_mrc(filename, 0);
   n_range_viol1 = test_mrc(filename, 1);
@@ -444,9 +693,8 @@ int bioem_RefMap::read_MRC(const char *filename, bioem_param &param)
     swap = 0;
     if (n_range_viol0 > 0)
     {
-      printf(
-          " Warning: %i header field range violations detected in file %s \n",
-          n_range_viol0, filename);
+      myWarning("%i header field range violations detected in file %s",
+                n_range_viol0, filename);
     }
   }
   else
@@ -454,8 +702,8 @@ int bioem_RefMap::read_MRC(const char *filename, bioem_param &param)
     swap = 1;
     if (n_range_viol1 > 0)
     {
-      printf("Warning: %i header field range violations detected in file %s \n",
-             n_range_viol1, filename);
+      myWarning("%i header field range violations detected in file %s",
+                n_range_viol1, filename);
     }
   }
   printf("\n+++++++++++++++++++++++++++++++++++++++++++\n");
@@ -520,18 +768,15 @@ int bioem_RefMap::read_MRC(const char *filename, bioem_param &param)
 
   if (header_ok == 0)
   {
-    cout << "ERROR reading MRC header: " << filename;
-    exit(1);
+    myError("Reading MRC header: %s", filename);
   }
 
   if (nr != param.param_device.NumberPixels ||
       nc != param.param_device.NumberPixels)
   {
-    cout << "PROBLEM INCONSISTENT NUMBER OF PIXELS IN MAPS AND INPUTFILE ( "
-         << param.param_device.NumberPixels << ", i " << nc << ", j " << nr
-         << ")"
-         << "\n";
-    exit(1);
+    myError("Inconsistent number of pixels in maps and inputfile "
+            "( %d, i %d, j %d)",
+            param.param_device.NumberPixels, nc, nr);
   }
 
   if (ntotRefMap == 0)
@@ -546,10 +791,7 @@ int bioem_RefMap::read_MRC(const char *filename, bioem_param &param)
 
   if (mode != 2)
   {
-    cout << "ERROR with MRC mode " << mode << "\n";
-    cout << "Currently mode 2 is the only one allowed"
-         << "\n";
-    exit(1);
+    myError("MRC mode: %d. Currently mode 2 is the only one allowed", mode);
   }
   else
   {
@@ -557,15 +799,13 @@ int bioem_RefMap::read_MRC(const char *filename, bioem_param &param)
     for (count = 0; count < 256; ++count)
       if (read_float_empty(fin) == 0)
       {
-        cout << "ERROR Converting Data: " << filename;
-        exit(1);
+        myError("Converting Data: %s", filename);
       }
 
     for (count = 0; count < (unsigned long) nsymbt; ++count)
       if (read_char_float(&currfloat, fin) == 0)
       {
-        cout << "ERROR Converting Data: " << filename;
-        exit(1);
+        myError("Converting Data: %s", filename);
       }
 
     for (int nmap = 0; nmap < ns; nmap++)
@@ -577,8 +817,7 @@ int bioem_RefMap::read_MRC(const char *filename, bioem_param &param)
         {
           if (read_float(&currfloat, fin, swap) == 0)
           {
-            cout << "ERROR Converting Data: " << filename;
-            exit(1);
+            myError("Converting Data: %s", filename);
           }
           else
           {
@@ -613,139 +852,85 @@ int bioem_RefMap::read_MRC(const char *filename, bioem_param &param)
   return (0);
 }
 
-int bioem_RefMap::read_float(float *currfloat, FILE *fin, int swap)
+int bioem_RefMap::read_one_MRC(const char *filename, bioem_param &param,
+                               int offset, int swap, int nc, int nr, int ns,
+                               int nsymbt)
 {
-  unsigned char *cptr, tmp;
+  // Partially:
+  /*     subroutine "read_MRC" of the Situs 2.7.2 program.
+         Ref: Willy Wriggers. Using Situs for the Integration of
+     Multi-Resolution Structures.
+         Biophysical Reviews, 2010, Vol. 2, pp. 21-27.*/
 
-  if (fread(currfloat, 4, 1, fin) != 1)
-    return 0;
-  if (swap == 1)
-  {
-    cptr = (unsigned char *) currfloat;
-    tmp = cptr[0];
-    cptr[0] = cptr[3];
-    cptr[3] = tmp;
-    tmp = cptr[1];
-    cptr[1] = cptr[2];
-    cptr[2] = tmp;
-  }
-  return 1;
-}
-
-int bioem_RefMap::read_int(int *currlong, FILE *fin, int swap)
-{
-  unsigned char *cptr, tmp;
-
-  if (fread(currlong, 4, 1, fin) != 1)
-    return 0;
-  if (swap == 1)
-  {
-    cptr = (unsigned char *) currlong;
-    tmp = cptr[0];
-    cptr[0] = cptr[3];
-    cptr[3] = tmp;
-    tmp = cptr[1];
-    cptr[1] = cptr[2];
-    cptr[2] = tmp;
-  }
-  return 1;
-}
-int bioem_RefMap::read_float_empty(FILE *fin)
-{
-  float currfloat;
-
-  if (fread(&currfloat, 4, 1, fin) != 1)
-    return 0;
-  return 1;
-}
-
-int bioem_RefMap::read_char_float(float *currfloat, FILE *fin)
-{
-  char currchar;
-
-  if (fread(&currchar, 1, 1, fin) != 1)
-    return 0;
-  *currfloat = (float) currchar;
-  return 1;
-}
-
-int bioem_RefMap::test_mrc(const char *vol_file, int swap)
-{
+  myfloat_t st, st2;
   FILE *fin;
-  int nc, nr, ns, mx, my, mz;
-  int mode, ncstart, nrstart, nsstart;
-  float xlen, ylen, zlen;
-  int i, header_ok = 1, n_range_viols = 0;
-  int mapc, mapr, maps_local;
-  float alpha, beta, gamma;
-  float dmin, dmax, dmean, dummy, xorigin, yorigin, zorigin;
+  float currfloat;
+  long start = offset * refMapSize;
 
-  fin = fopen(vol_file, "rb");
+  fin = fopen(filename, "rb");
   if (fin == NULL)
   {
-    cout << "ERROR opening MRC: " << vol_file;
-    exit(1);
+    myError("Opening MRC: %s", filename);
   }
-
-  //* read header info
-  header_ok *= read_int(&nc, fin, swap);
-  header_ok *= read_int(&nr, fin, swap);
-  header_ok *= read_int(&ns, fin, swap);
-  header_ok *= read_int(&mode, fin, swap);
-  header_ok *= read_int(&ncstart, fin, swap);
-  header_ok *= read_int(&nrstart, fin, swap);
-  header_ok *= read_int(&nsstart, fin, swap);
-  header_ok *= read_int(&mx, fin, swap);
-  header_ok *= read_int(&my, fin, swap);
-  header_ok *= read_int(&mz, fin, swap);
-  header_ok *= read_float(&xlen, fin, swap);
-  header_ok *= read_float(&ylen, fin, swap);
-  header_ok *= read_float(&zlen, fin, swap);
-  header_ok *= read_float(&alpha, fin, swap);
-  header_ok *= read_float(&beta, fin, swap);
-  header_ok *= read_float(&gamma, fin, swap);
-  header_ok *= read_int(&mapc, fin, swap);
-  header_ok *= read_int(&mapr, fin, swap);
-  header_ok *= read_int(&maps_local, fin, swap);
-  header_ok *= read_float(&dmin, fin, swap);
-  header_ok *= read_float(&dmax, fin, swap);
-  header_ok *= read_float(&dmean, fin, swap);
-  for (i = 23; i < 50; ++i)
-    header_ok *= read_float(&dummy, fin, swap);
-  header_ok *= read_float(&xorigin, fin, swap);
-  header_ok *= read_float(&yorigin, fin, swap);
-  header_ok *= read_float(&zorigin, fin, swap);
-  fclose(fin);
-  if (header_ok == 0)
+  for (int count = 0; count < 256; ++count)
   {
-    cout << "ERROR reading MRC header: " << vol_file;
-    exit(1);
+    if (read_float_empty(fin) == 0)
+    {
+      myError("Converting Data: %s", filename);
+    }
+  }
+  for (long count = 0; count < (long) nsymbt; ++count)
+  {
+    if (read_char_float(&currfloat, fin) == 0)
+    {
+      myError("Converting Data: %s", filename);
+    }
+  }
+  if (nr != numPixels || nc != numPixels)
+  {
+    myError("Inconsistent number of pixels in maps and inputfile "
+            "( %d, i %d, j %d)",
+            numPixels, nc, nr);
   }
 
-  n_range_viols += (nc > 5000);
-  n_range_viols += (nc < 0);
-  n_range_viols += (nr > 5000);
-  n_range_viols += (nr < 0);
-  n_range_viols += (ns > 5000);
-  n_range_viols += (ns < 0);
-  n_range_viols += (ncstart > 5000);
-  n_range_viols += (ncstart < -5000);
-  n_range_viols += (nrstart > 5000);
-  n_range_viols += (nrstart < -5000);
-  n_range_viols += (nsstart > 5000);
-  n_range_viols += (nsstart < -5000);
-  n_range_viols += (mx > 5000);
-  n_range_viols += (mx < 0);
-  n_range_viols += (my > 5000);
-  n_range_viols += (my < 0);
-  n_range_viols += (mz > 5000);
-  n_range_viols += (mz < 0);
-  n_range_viols += (alpha > 360.0f);
-  n_range_viols += (alpha < -360.0f);
-  n_range_viols += (beta > 360.0f);
-  n_range_viols += (beta < -360.0f);
-  n_range_viols += (gamma > 360.0f);
-  n_range_viols += (gamma < -360.0f);
+  // Actual reading of the data
+  for (int nmap = 0; nmap < ns; nmap++)
+  {
+    st = 0.0;
+    st2 = 0.0;
+    for (int j = 0; j < nr; j++)
+    {
+      for (int i = 0; i < nc; i++)
+      {
+        if (read_float(&currfloat, fin, swap) == 0)
+        {
+          myError("Converting Data: %s", filename);
+        }
+        else
+        {
+          long address = start + nmap * refMapSize + i * numPixels + j;
+          maps[address] = (myfloat_t) currfloat;
+          st += currfloat;
+          st2 += currfloat * currfloat;
+        }
+      }
+    }
+    // Normaling maps to zero mean and unit standard deviation
+    if (!param.notnormmap)
+    {
+      st /= float(nr * nc);
+      st2 = sqrt(st2 / float(nr * nc) - st * st);
+      for (int j = 0; j < nr; j++)
+      {
+        for (int i = 0; i < nc; i++)
+        {
+          long address = start + nmap * refMapSize + i * numPixels + j;
+          maps[address] = maps[address] / st2 - st / st2;
+        }
+      }
+    }
+  }
 
-  return n_range_viols;
+  fclose(fin);
+  return (0);
 }

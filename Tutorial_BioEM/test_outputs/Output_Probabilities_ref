@@ -1,7 +1,0 @@
-************************* HEADER:: NOTATION *******************************************
-Notation= RefMap:  MapNumber ; LogProb natural logarithm of posterior Probability ; Constant: Numerical Const. for adding Probabilities 
-Notation= RefMap:  MapNumber ; Maximizing Param: MaxLogProb - alpha[rad] - beta[rad] - gamma[rad] - CTF amp - CTF defocus - CTF B-Env - center x - center y - normalization - offsett 
-************************* HEADER:: NOTATION *******************************************
-
-RefMap: 0 LogProb:  -68317.6 Constant: 363.117
-RefMap: 0 Maximizing Param: -68317.6 -1.5708 [] 1.0472 [] 1.5708 [] 0.1 [] 5 [micro-m] 200.25 [A²] -2 [pix] -6 [pix] -0.00154624 [] 0.0141542 [] 

@@ -92,7 +92,6 @@ int bioem_param::readParameters(const char *fileinput)
   notnormmap = false;
   usepsf = false;
   yespriorAngles = false;
-  ignorepointsout = false;
   printrotmod = false;
   ignorePDB = false;
 
@@ -109,8 +108,7 @@ int bioem_param::readParameters(const char *fileinput)
   ifstream input(fileinput);
   if (!input.good())
   {
-    cout << "Failed to open file: " << fileinput << "\n";
-    exit(1);
+    myError("Opening file: %s", fileinput);
   }
 
   char line[512] = {0};
@@ -120,9 +118,8 @@ int bioem_param::readParameters(const char *fileinput)
   cout << "\n   READING BioEM PARAMETERS             \n\n";
   cout << " +++++++++++++++++++++++++++++++++++++++++ \n";
 
-  while (!input.eof())
+  while (input.getline(line, 512))
   {
-    input.getline(line, 512);
     strcpy(saveline, line);
     char *token = strtok(line, " ");
 
@@ -136,10 +133,9 @@ int bioem_param::readParameters(const char *fileinput)
       pixelSize = atof(token);
       if (pixelSize < 0)
       {
-        cout << "*** Error: Negative pixelSize ";
-        exit(1);
+        myError("Negative pixel size");
       }
-      cout << "Pixel Sixe " << pixelSize << "\n";
+      cout << "Pixel Size " << pixelSize << "\n";
       yesPixSi = true;
     }
     else if (strcmp(token, "NUMBER_PIXELS") == 0)
@@ -148,8 +144,7 @@ int bioem_param::readParameters(const char *fileinput)
       param_device.NumberPixels = int(atoi(token));
       if (param_device.NumberPixels < 0)
       {
-        cout << "*** Error: Negative Number of Pixels ";
-        exit(1);
+        myError("Negative Number of Pixels");
       }
       cout << "Number of Pixels " << param_device.NumberPixels << "\n";
       yesNumPix = true;
@@ -160,8 +155,7 @@ int bioem_param::readParameters(const char *fileinput)
       angleGridPointsAlpha = int(atoi(token));
       if (angleGridPointsAlpha < 0)
       {
-        cout << "*** Error: Negative GRIDPOINTS_ALPHA ";
-        exit(1);
+        myError("Negative GRIDPOINTS_ALPHA");
       }
       cout << "Grid points alpha " << angleGridPointsAlpha << "\n";
       yesGPal = true;
@@ -172,8 +166,7 @@ int bioem_param::readParameters(const char *fileinput)
       angleGridPointsBeta = int(atoi(token));
       if (angleGridPointsBeta < 0)
       {
-        cout << "*** Error: Negative GRIDPOINTS_BETA ";
-        exit(1);
+        myError("Negative GRIDPOINTS_BETA");
       }
       cout << "Grid points in Cosine ( beta ) " << angleGridPointsBeta << "\n";
       yesGPbe = true;
@@ -194,8 +187,7 @@ int bioem_param::readParameters(const char *fileinput)
       }
       else
       {
-        cout << "Inconsitent Input: Grid or List with Quaternions?\n";
-        exit(1);
+        myError("Inconsistent input: grid or list with quaternions?");
       }
       yesquatgrid = true;
       doquater = true;
@@ -207,30 +199,26 @@ int bioem_param::readParameters(const char *fileinput)
       startBfactor = atof(token);
       if (startBfactor < 0)
       {
-        cout << "*** Error: Negative START B Env ";
-        exit(1);
+        myError("Negative start B Env.");
       }
       token = strtok(NULL, " ");
       endBfactor = atof(token);
       if (endBfactor < 0)
       {
-        cout << "*** Error: Negative END B Env ";
-        exit(1);
+        myError("Negative end B Env.");
       }
       token = strtok(NULL, " ");
       numberGridPointsEnvelop = int(atoi(token));
       if (numberGridPointsEnvelop < 0)
       {
-        cout << "*** Error: Negative Number of Grid points BEnv ";
-        exit(1);
+        myError("Negative number of grid points B Env.");
       }
       cout << "Grid CTF B-ENV: " << startBfactor << " " << endBfactor << " "
            << numberGridPointsEnvelop << "\n";
       if (startBfactor > endBfactor)
       {
-        cout << "Error: Grid ill defined END > START\n";
-        exit(1);
-      };
+        myError("Grid ill defined end > start");
+      }
       yesBFact = true;
     }
     else if (strcmp(token, "CTF_DEFOCUS") == 0)
@@ -239,34 +227,29 @@ int bioem_param::readParameters(const char *fileinput)
       startDefocus = atof(token);
       if (startDefocus < 0)
       {
-        cout << "*** Error: Negative START Defocus ";
-        exit(1);
+        myError("Negative start defocus");
       }
       token = strtok(NULL, " ");
       endDefocus = atof(token);
       if (endDefocus < 0)
       {
-        cout << "*** Error: Negative END Defocus ";
-        exit(1);
+        myError("Negative end defocus");
       }
       token = strtok(NULL, " ");
       numberGridPointsCTF_phase = int(atoi(token));
       if (numberGridPointsCTF_phase < 0)
       {
-        cout << "*** Error: Negative Number of Grid points Defocus ";
-        exit(1);
+        myError("Negative number of grid points defocus");
       }
       cout << "Grid CTF Defocus: " << startDefocus << " " << endDefocus << " "
            << numberGridPointsCTF_phase << "\n";
       if (startDefocus > endDefocus)
       {
-        cout << "Error: Grid ill defined END > START\n";
-        exit(1);
+        myError("Grid ill defined end > start");
       };
       if (endDefocus > 8.)
       {
-        cout << "Defocus beyond 8micro-m range is not allowed \n";
-        exit(1);
+        myError("Defocus beyond 8micro-m range is not allowed");
       }
       yesDefocus = true;
     }
@@ -276,29 +259,25 @@ int bioem_param::readParameters(const char *fileinput)
       startGridCTF_amp = atof(token);
       if (startGridCTF_amp < 0)
       {
-        cout << "*** Error: Negative START Amplitude ";
-        exit(1);
+        myError("Negative start amplitude");
       }
       token = strtok(NULL, " ");
       endGridCTF_amp = atof(token);
       if (endGridCTF_amp < 0)
       {
-        cout << "*** Error: Negative END Amplitude";
-        exit(1);
+        myError("Negative end amplitude");
       }
       token = strtok(NULL, " ");
       numberGridPointsCTF_amp = int(atoi(token));
       if (numberGridPointsCTF_amp < 0)
       {
-        cout << "*** Error: Negative Number of grid points amplitude ";
-        exit(1);
+        myError("Negative number of grid points amplitude");
       }
       cout << "Grid Amplitude: " << startGridCTF_amp << " " << endGridCTF_amp
            << " " << numberGridPointsCTF_amp << "\n";
       if (startGridCTF_amp > endGridCTF_amp)
       {
-        cout << "Error: Grid ill defined END > START\n";
-        exit(1);
+        myError("Grid ill defined end > start");
       };
       yesAMP = true;
     }
@@ -308,9 +287,9 @@ int bioem_param::readParameters(const char *fileinput)
       elecwavel = atof(token);
       if (elecwavel < 0.0150)
       {
-        cout << "Wrong electron wave length " << elecwavel << "\n";
-        cout << "Has to be in Angstrom (A)\n";
-        exit(1);
+        myError("Wrong electron wave length %lf. "
+                "Has to be in Angstrom (A)",
+                elecwavel);
       }
       cout << "Electron wave length in (A) is: " << elecwavel << "\n";
     }
@@ -319,7 +298,7 @@ int bioem_param::readParameters(const char *fileinput)
     {
       usepsf = true;
       param_device.tousepsf = true;
-      cout << "IMPORTANT: Using Point Spread Function. Thus, all parameters "
+      cout << "Important: Using Point Spread Function. Thus, all parameters "
               "are in Real Space. \n";
     }
     else if (strcmp(token, "PSF_AMPLITUDE") == 0)
@@ -328,29 +307,25 @@ int bioem_param::readParameters(const char *fileinput)
       startGridCTF_amp = atof(token);
       if (startGridCTF_amp < 0)
       {
-        cout << "*** Error: Negative START Amplitude ";
-        exit(1);
+        myError("Negative start amplitude");
       }
       token = strtok(NULL, " ");
       endGridCTF_amp = atof(token);
       if (endGridCTF_amp < 0)
       {
-        cout << "*** Error: Negative END Amplitude";
-        exit(1);
+        myError("Negative end amplitude");
       }
       token = strtok(NULL, " ");
       numberGridPointsCTF_amp = int(atoi(token));
       if (numberGridPointsCTF_amp < 0)
       {
-        cout << "*** Error: Negative Number of grid points amplitude ";
-        exit(1);
+        myError("Negative number of grid points amplitude");
       }
       cout << "Grid Amplitude: " << startGridCTF_amp << " " << endGridCTF_amp
            << " " << numberGridPointsCTF_amp << "\n";
       if (startGridCTF_amp > endGridCTF_amp)
       {
-        cout << "Error: Grid ill defined END > START\n";
-        exit(1);
+        myError("Grid ill defined end > start");
       };
       yesAMP = true;
     }
@@ -360,30 +335,26 @@ int bioem_param::readParameters(const char *fileinput)
       startGridEnvelop = atof(token);
       if (startGridEnvelop < 0)
       {
-        cout << "*** Error: Negative START PSF Env. ";
-        exit(1);
+        myError("Negative start PSF Env.");
       }
       token = strtok(NULL, " ");
       endGridEnvelop = atof(token);
       if (endGridEnvelop < 0)
       {
-        cout << "*** Error: Negative END  PSF Env. ";
-        exit(1);
+        myError("Negative end PSF Env.");
       }
       token = strtok(NULL, " ");
       numberGridPointsEnvelop = int(atoi(token));
       if (numberGridPointsEnvelop < 0)
       {
-        cout << "*** Error: Negative Number of grid points  PSF Env. ";
-        exit(1);
+        myError("Negative number of grid points PSF Env.");
       }
       cout << "Grid PSF Envelope: " << startGridEnvelop << " " << endGridEnvelop
            << " " << numberGridPointsEnvelop << "\n";
       if (startGridEnvelop > endGridEnvelop)
       {
-        cout << "Error: Grid ill defined END > START\n";
-        exit(1);
-      };
+        myError("Grid ill defined end > start");
+      }
       yesPSFenv = true;
     }
     else if (strcmp(token, "PSF_PHASE") == 0)
@@ -392,30 +363,26 @@ int bioem_param::readParameters(const char *fileinput)
       startGridCTF_phase = atof(token);
       if (startGridCTF_phase < 0)
       {
-        cout << "*** Error: Negative START Amplitud ";
-        exit(1);
+        myError("Negative start amplitude");
       }
       token = strtok(NULL, " ");
       endGridCTF_phase = atof(token);
       if (endGridCTF_phase < 0)
       {
-        cout << "*** Error: Negative END Amplitud";
-        exit(1);
+        myError("Negative end amplitude");
       }
       token = strtok(NULL, " ");
       numberGridPointsCTF_phase = int(atoi(token));
       if (numberGridPointsCTF_phase < 0)
       {
-        cout << "*** Error: Negative Number of grid points amplitud ";
-        exit(1);
+        myError("Negative number of grid points amplitude");
       }
       cout << "Grid PSF phase: " << startGridCTF_phase << " "
            << endGridCTF_phase << " " << numberGridPointsCTF_phase << "\n";
       if (startGridCTF_phase > endGridCTF_phase)
       {
-        cout << "Error: Grid ill defined END > START\n";
-        exit(1);
-      };
+        myError("Grid ill defined end > start");
+      }
       yesPSFpha = true;
     }
     else if (strcmp(token, "DISPLACE_CENTER") == 0)
@@ -424,8 +391,7 @@ int bioem_param::readParameters(const char *fileinput)
       param_device.maxDisplaceCenter = int(atoi(token));
       if (param_device.maxDisplaceCenter < 0)
       {
-        cout << "*** Error: Negative MAX_D_CENTER ";
-        exit(1);
+        myError("Negative MAX_D_CENTER");
       }
       cout << "Maximum displacement Center " << param_device.maxDisplaceCenter
            << "\n";
@@ -433,8 +399,7 @@ int bioem_param::readParameters(const char *fileinput)
       param_device.GridSpaceCenter = int(atoi(token));
       if (param_device.GridSpaceCenter < 0)
       {
-        cout << "*** Error: Negative PIXEL_GRID_CENTER ";
-        exit(1);
+        myError("Negative PIXEL_GRID_CENTER");
       }
       cout << "Grid space displacement center " << param_device.GridSpaceCenter
            << "\n";
@@ -447,8 +412,7 @@ int bioem_param::readParameters(const char *fileinput)
       param_device.writeAngles = int(atoi(token));
       if (param_device.writeAngles < 0)
       {
-        cout << "*** Error: Negative WRITE_PROB_ANGLES ";
-        exit(1);
+        myError("Negative WRITE_PROB_ANGLES");
       }
       cout << "Writing " << param_device.writeAngles
            << " Probabilies of each angle \n";
@@ -552,19 +516,13 @@ int bioem_param::readParameters(const char *fileinput)
       cout << "Gaussian Center in Prior of defocus parameter: "
            << param_device.Priordefcent << "\n";
     }
-
-    else if (strcmp(token, "IGNORE_POINTSOUT") == 0)
-    {
-      ignorepointsout = true;
-      cout << "Ignoring model points outside the map\n";
-    }
     else if (strcmp(token, "PRINT_ROTATED_MODELS") == 0) // Number of Euler
                                                          // angle tripplets in
                                                          // non uniform Euler
                                                          // angle sampling
     {
       printrotmod = true;
-      cout << "PRINTING out rotatted models (best for debugging)\n";
+      cout << "Printing out rotated models (best for debugging)\n";
     }
   }
   input.close();
@@ -573,41 +531,34 @@ int bioem_param::readParameters(const char *fileinput)
 
   if (not(yesPixSi))
   {
-    cout << "**** INPUT MISSING: Please provide PIXEL_SIZE\n";
-    exit(1);
-  };
+    myError("Input missing: please provide PIXEL_SIZE");
+  }
   if (not(yesNumPix))
   {
-
-    cout << "**** INPUT MISSING: Please provide NUMBER_PIXELS \n";
-    exit(1);
-  };
+    myError("Input missing: please provide NUMBER_PIXELS");
+  }
   if (!notuniformangles)
   {
     if (!doquater)
     {
       if (not(yesGPal))
       {
-        cout << "**** INPUT MISSING: Please provide GRIDPOINTS_ALPHA \n";
-        exit(1);
-      };
+        myError("Input missing: please provide GRIDPOINTS_ALPHA");
+      }
       if (not(yesGPbe))
       {
-        cout << "**** INPUT MISSING: Please provide GRIDPOINTS_BETA \n";
-        exit(1);
-      };
+        myError("Input missing: please provide GRIDPOINTS_BETA");
+      }
     }
     else if (!yesquatgrid)
     {
-      cout << "**** INPUT MISSING: Please provide GRIDPOINTS_QUATERNION \n";
-      exit(1);
+      myError("Input missing: please provide GRIDPOINTS_QUATERNION");
     }
   }
   if (not(yesMDC))
   {
-    cout << "**** INPUT MISSING: Please provide GRID Displacement CENTER \n";
-    exit(1);
-  };
+    myError("Input missing: please provide grid displacement CENTER");
+  }
 
   cout << "To verify input of Priors:\n";
   cout << "Sigma Prior B-Env: " << param_device.sigmaPriorbctf << "\n";
@@ -619,39 +570,33 @@ int bioem_param::readParameters(const char *fileinput)
   {
     if (not(yesPSFpha))
     {
-      cout << "**** INPUT MISSING: Please provide Grid PSF PHASE \n";
-      exit(1);
-    };
+      myError("Input missing: please provide grid PSF PHASE");
+    }
     if (not(yesPSFenv))
     {
-      cout << "**** INPUT MISSING: Please provide Grid PSF ENVELOPE \n";
-      exit(1);
-    };
+      myError("Input missing: please provide grid PSF ENVELOPE");
+    }
     if (not(yesAMP))
     {
-      cout << "**** INPUT MISSING: Please provide Grid PSF AMPLITUD \n";
-      exit(1);
-    };
+      myError("Input missing: please provide grid PSF AMPLITUD");
+    }
   }
   else
   {
-    // cout << "**Note:: Calculation using CTF values (not PSF). If this is not
+    // cout << "Note - Calculation using CTF values (not PSF). If this is not
     // correct then key word: USE_PSF missing in inputfile**\n";
     if (not(yesBFact))
     {
-      cout << "**** INPUT MISSING: Please provide Grid CTF B-ENV \n";
-      exit(1);
-    };
+      myError("Input missing: please provide grid CTF B Env.");
+    }
     if (not(yesDefocus))
     {
-      cout << "**** INPUT MISSING: Please provide Grid CTF Defocus \n";
-      exit(1);
-    };
+      myError("Input missing: please provide grid CTF defocus");
+    }
     if (not(yesAMP))
     {
-      cout << "**** INPUT MISSING: Please provide Grid CTF AMPLITUD \n";
-      exit(1);
-    };
+      myError("Input missing: please provide grid CTF amplitude");
+    }
     // Asigning values of phase according to defocus
     startGridCTF_phase = startDefocus * M_PI * 2.f * 10000 * elecwavel;
     endGridCTF_phase = endDefocus * M_PI * 2.f * 10000 * elecwavel;
@@ -673,8 +618,7 @@ int bioem_param::readParameters(const char *fileinput)
 
   if (writeCTF && !usepsf)
   {
-    cout << "Writing CTF is only valid when integrating over the PSF\n";
-    exit(1);
+    myError("Writing CTF is only valid when integrating over the PSF");
   }
 
   cout << " +++++++++++++++++++++++++++++++++++++++++ \n";
@@ -706,8 +650,7 @@ int bioem_param::forprintBest(const char *fileinput)
   //**** Different keywords! For printing MAP ************
   if (!input.good())
   {
-    cout << "Failed to open Best Parameter file: " << fileinput << "\n";
-    exit(1);
+    myError("Opening best parameter file: %s", fileinput);
   }
 
   delete[] angles;
@@ -723,9 +666,8 @@ int bioem_param::forprintBest(const char *fileinput)
   cout << "\n     ONLY READING BEST PARAMETERS \n";
   cout << "\n     FOR PRINTING MAXIMIZED MAP \n";
   cout << " +++++++++++++++++++++++++++++++++++++++++ \n";
-  while (!input.eof())
+  while (input.getline(line, 512))
   {
-    input.getline(line, 512);
     strcpy(saveline, line);
     char *token = strtok(line, " ");
 
@@ -739,10 +681,9 @@ int bioem_param::forprintBest(const char *fileinput)
       pixelSize = atof(token);
       if (pixelSize < 0)
       {
-        cout << "*** Error: Negative pixelSize ";
-        exit(1);
+        myError("Negative pixel size");
       }
-      cout << "Pixel Sixe " << pixelSize << "\n";
+      cout << "Pixel Size " << pixelSize << "\n";
     }
     else if (strcmp(token, "NUMBER_PIXELS") == 0)
     {
@@ -750,8 +691,7 @@ int bioem_param::forprintBest(const char *fileinput)
       param_device.NumberPixels = int(atoi(token));
       if (param_device.NumberPixels < 0)
       {
-        cout << "*** Error: Negative Number of Pixels ";
-        exit(1);
+        myError("Negative number of pixels");
       }
       cout << "Number of Pixels " << param_device.NumberPixels << "\n";
     }
@@ -802,11 +742,10 @@ int bioem_param::forprintBest(const char *fileinput)
       angles[0].quat4 = atof(token);
       cout << "Best Q3 " << angles[0].quat4 << "\n";
     }
-
     else if (strcmp(token, "USE_PSF") == 0)
     {
       usepsf = true;
-      cout << "IMPORTANT: Using Point Spread Function. Thus, all parameters "
+      cout << "Important: Using Point Spread Function. Thus, all parameters "
               "are in Real Space. \n";
     }
     else if (strcmp(token, "BEST_PSF_ENVELOPE") == 0)
@@ -815,8 +754,7 @@ int bioem_param::forprintBest(const char *fileinput)
       startGridEnvelop = atof(token);
       if (startGridEnvelop < 0)
       {
-        cout << "*** Error: Negative START_ENVELOPE ";
-        exit(1);
+        myError("Negative START_ENVELOPE");
       }
       cout << "Best Envelope PSF " << startGridEnvelop << "\n";
     }
@@ -832,10 +770,9 @@ int bioem_param::forprintBest(const char *fileinput)
       startGridCTF_amp = atof(token);
       if (startGridCTF_amp < 0)
       {
-        cout << "Error Negative Amplitud\n";
-        exit(1);
+        myError("Negative amplitude");
       }
-      cout << "Best Amplitud PSF " << startGridCTF_amp << "\n";
+      cout << "Best Amplitude PSF " << startGridCTF_amp << "\n";
     }
     else if (strcmp(token, "BEST_CTF_B_ENV") == 0)
     {
@@ -843,8 +780,7 @@ int bioem_param::forprintBest(const char *fileinput)
       startGridEnvelop = atof(token); // / 2.f;
       if (startGridEnvelop < 0)
       {
-        cout << "*** Error: Negative START B-Env ";
-        exit(1);
+        myError("Negative start B Env.");
       }
       cout << "Best B- Env " << startGridEnvelop << "\n";
       ctfparam = true;
@@ -862,10 +798,9 @@ int bioem_param::forprintBest(const char *fileinput)
       startGridCTF_amp = atof(token);
       if (startGridCTF_amp < 0)
       {
-        cout << "Error Negative Amplitud\n";
-        exit(1);
+        myError("Negative amplitude");
       }
-      cout << "Best Amplitud " << startGridCTF_amp << "\n";
+      cout << "Best Amplitude " << startGridCTF_amp << "\n";
       ctfparam = true;
     }
     else if (strcmp(token, "BEST_DX") == 0)
@@ -911,7 +846,7 @@ int bioem_param::forprintBest(const char *fileinput)
                                                          // angle sampling
     {
       printrotmod = true;
-      cout << "PRINTING out rotatted models (best for debugging)\n";
+      cout << "Printing out rotated models (best for debugging)\n";
     }
     else if (strcmp(token, "SHIFT_X") == 0)
     {
@@ -931,23 +866,19 @@ int bioem_param::forprintBest(const char *fileinput)
   {
     if (angles[0].quat4 * angles[0].quat4 > 1)
     {
-      cout << " Problem with quaternion " << angles[0].quat4 << "\n";
-      exit(1);
+      myError("Quaternion %lf", angles[0].quat4);
     }
     if (angles[0].pos[0] * angles[0].pos[0] > 1)
     {
-      cout << " Problem with quaternion " << angles[0].pos[0] << "\n";
-      exit(1);
+      myError("Quaternion %lf", angles[0].pos[0]);
     }
     if (angles[0].pos[1] * angles[0].pos[1] > 1)
     {
-      cout << " Problem with quaternion " << angles[0].pos[1] << "\n";
-      exit(1);
+      myError("Quaternion %lf", angles[0].pos[1]);
     }
     if (angles[0].pos[2] * angles[0].pos[2] > 1)
     {
-      cout << " Problem with quaternion " << angles[0].pos[2] << "\n";
-      exit(1);
+      myError("Quaternion %lf", angles[0].pos[2]);
     }
   }
 
@@ -955,8 +886,7 @@ int bioem_param::forprintBest(const char *fileinput)
 
   if (usepsf && ctfparam)
   {
-    cout << "Inconsitent Input: Using both PSF and CTF ?\n";
-    exit(1);
+    myError("Inconsitent input: using both PSF and CTF?");
   }
 
   // Automatic definitions
@@ -1007,8 +937,7 @@ void bioem_param::PrepareFFTs()
   if (fft_plan_c2c_forward == 0 || fft_plan_c2c_backward == 0 ||
       fft_plan_r2c_forward == 0 || fft_plan_c2r_backward == 0)
   {
-    cout << "Error planing FFTs\n";
-    exit(1);
+    myError("Planning FFTs");
   }
 
   myfftw_free(tmp_map);
@@ -1066,7 +995,6 @@ int bioem_param::CalculateGridsParam(
 
   if (!doquater)
   {
-
     //*********** With Euler angles *******************
     cout << "Analysis Using Default Euler Angles\n";
     if (!notuniformangles)
@@ -1074,10 +1002,8 @@ int bioem_param::CalculateGridsParam(
 
       if (yespriorAngles)
       {
-        cout << "Error: This option is not valid with prior for "
-                "orientations\nPlease provide separate file with orientations "
-                "and priors";
-        exit(1);
+        myError("This option is not valid with prior for orientations."
+                "Please provide separate file with orientations and priors");
       }
 
       cout << "Calculating Grids in Euler Angles\n";
@@ -1092,7 +1018,6 @@ int bioem_param::CalculateGridsParam(
       cos_grid_beta = 2.f / (myfloat_t) angleGridPointsBeta;
 
       // Euler Angle Array
-
       angles =
           (myfloat3_t *) mallocchk(angleGridPointsAlpha * angleGridPointsBeta *
                                    angleGridPointsAlpha * sizeof(myfloat3_t));
@@ -1123,95 +1048,84 @@ int bioem_param::CalculateGridsParam(
     }
     else
     {
-
       //************ Reading Euler Angles From File **************************
       ifstream input(fileangles);
 
       if (!input.good())
       {
-        cout << "Euler Angle File Failed to open file " << fileangles << " "
-             << endl;
-        exit(1);
+        myError("Euler angle file failed to open file %s", fileangles);
       }
 
       char line[512] = {0};
-      //      char saveline[512];
 
-      int n = 0;
-
-      // First line tels the number of rows
-      input.getline(line, 511);
+      // First line tells the number of rows
+      input.getline(line, 512);
 
       char tmpVals[36] = {0};
 
       strncpy(tmpVals, line, 12);
-      sscanf(tmpVals, "%d", &NotUn_angles);
+      mySscanf(1, tmpVals, "%d", &NotUn_angles);
       cout << "Number of Euler angles " << NotUn_angles << "\n";
 
       if (NotUn_angles < 1)
       {
-        cout << "\nNot defined number of Euler angles in INPUT file:" << endl;
+        myError("Euler angles not defined in input file");
         //      cout << "Use key word: NOT_UNIFORM_TOTAL_ANGS\n";
-        exit(1);
       }
 
-      // NotUn_angles=NotUn_angles+1;
-
       angles = (myfloat3_t *) mallocchk(NotUn_angles * sizeof(myfloat3_t));
-
       if (yespriorAngles)
       {
         delete[] angprior;
         angprior = new myfloat_t[NotUn_angles];
       }
-      while (!input.eof())
+
+      int n = 0;
+      while (input.getline(line, 512))
       {
+        float a, b, g;
+        char tmpVals[60] = {0};
 
-        input.getline(line, 511);
+        strncpy(tmpVals, line, 12);
+        mySscanf(1, tmpVals, "%f", &a);
 
-        if (n < NotUn_angles)
+        strncpy(tmpVals, line + 12, 12);
+        mySscanf(1, tmpVals, "%f", &b);
+
+        strncpy(tmpVals, line + 24, 12);
+        mySscanf(1, tmpVals, "%f", &g);
+
+        if (yespriorAngles)
         {
+          float pp;
+          strncpy(tmpVals, line + 36, 12);
+          mySscanf(1, tmpVals, "%f", &pp);
+          if (pp < 0.0000001)
+            cout << "Sure your input is correct? Very small prior.\n";
+          angprior[n] = (myfloat_t) pp;
+        }
 
-          float a = 0., b = 0., g = 0., pp = 0.;
-
-          char tmpVals[60] = {0};
-
-          strncpy(tmpVals, line, 12);
-          sscanf(tmpVals, "%f", &a);
-
-          strncpy(tmpVals, line + 12, 12);
-          sscanf(tmpVals, "%f", &b);
-
-          strncpy(tmpVals, line + 24, 12);
-          sscanf(tmpVals, "%f", &g);
-
-          if (yespriorAngles)
-          {
-            strncpy(tmpVals, line + 36, 12);
-            sscanf(tmpVals, "%f", &pp);
-            if (pp < 0.0000001)
-              cout << "Sure you're input is correct? Very small prior.\n";
-            angprior[n] = (myfloat_t) pp;
-          }
-
-          angles[n].pos[0] = (myfloat_t) a;
-          angles[n].pos[1] = (myfloat_t) b;
-          angles[n].pos[2] = (myfloat_t) g;
-          angles[n].quat4 = 0.0; // just to be sure */
+        angles[n].pos[0] = (myfloat_t) a;
+        angles[n].pos[1] = (myfloat_t) b;
+        angles[n].pos[2] = (myfloat_t) g;
+        angles[n].quat4 = 0.0; // just to be sure */
 #ifdef DEBUG
-          //	    if(yespriorAngles)
-          cout << "check orient: " << n << " "
-               << " " << angles[n].pos[0] << " " << angles[n].pos[1] << " "
-               << angles[n].pos[2] << " prior:\n "; // << angprior[n]<< "\n";
+        //  if(yespriorAngles)
+        cout << "check orient: " << n << " "
+             << " " << angles[n].pos[0] << " " << angles[n].pos[1] << " "
+             << angles[n].pos[2] << " prior:\n "; // << angprior[n]<< "\n";
 #endif
-        }
         n++;
-        if (NotUn_angles + 1 < n)
+        if (NotUn_angles < n)
         {
-          cout << "Not properly defined total Euler angles " << n
-               << " instead of " << NotUn_angles << "\n";
-          exit(1);
+          myError("Not properly defined total Euler angles %d instead of %d", n,
+                  NotUn_angles);
         }
+      }
+      if (NotUn_angles > n)
+      {
+        myError("Less quaternions than expected in header %d instead of %d", n,
+                NotUn_angles);
       }
       nTotGridAngles = NotUn_angles;
       voluang = 1. / (myfloat_t) NotUn_angles * priorMod;
@@ -1221,7 +1135,6 @@ int bioem_param::CalculateGridsParam(
   else
   {
     //************** Analysis with Quaternions
-
     if (!notuniformangles)
     {
       //************* Grid of Quaternions *******************
@@ -1229,17 +1142,15 @@ int bioem_param::CalculateGridsParam(
 
       if (yespriorAngles)
       {
-        cout << "This option is not valid with prior for orientations\n It is "
-                "necessary to provide a separate file with the angles and "
-                "priors";
-        exit(1);
+        myError("This option is not valid with prior for orientations. "
+                "It is necessary to provide a separate file with the "
+                "angles and the priors");
       }
 
       if (GridPointsQuatern < 0)
       {
-        cout << "*** Missing Gridpoints Quaternions \n after QUATERNIONS "
-                "(int)\n (int)=Number of gridpoins per dimension";
-        exit(1);
+        myError("Missing gridpoints quaternions. After QUATERNIONS "
+                "(int). (int)=Number of gridpoins per dimension");
       }
 
       myfloat_t dgridq, q1, q2, q3;
@@ -1264,14 +1175,11 @@ int bioem_param::CalculateGridsParam(
       }
 
       // allocating angles
-
       nTotGridAngles = n;
-
       angles = (myfloat3_t *) mallocchk(nTotGridAngles * sizeof(myfloat3_t));
-
       voluang = dgridq * dgridq * dgridq * priorMod;
-
       n = 0;
+
       // assigning values
       for (int ialpha = 0; ialpha < GridPointsQuatern + 1; ialpha++)
       {
@@ -1284,7 +1192,6 @@ int bioem_param::CalculateGridsParam(
             q3 = (myfloat_t) igamma * dgridq - 1.f + 0.5 * dgridq;
             if (q1 * q1 + q2 * q2 + q3 * q3 <= 1.f)
             {
-
               angles[n].pos[0] = q1;
               angles[n].pos[1] = q2;
               angles[n].pos[2] = q3;
@@ -1303,32 +1210,26 @@ int bioem_param::CalculateGridsParam(
     }
     else
     {
-
       //******** Reading Quaternions From a File ***************************
       ifstream input(fileangles);
 
       if (!input.good())
       {
-        cout << "Problem with Quaterion List file " << fileangles << " "
-             << endl;
-        exit(1);
+        myError("Quaterion list file %s", fileangles);
       }
 
       char line[512] = {0};
-      int n = 0;
 
       // First line tels the number of rows
-      input.getline(line, 511);
+      input.getline(line, 512);
       int ntotquat;
-
       char tmpVals[60] = {0};
 
       strncpy(tmpVals, line, 12);
-      sscanf(tmpVals, "%d", &ntotquat);
+      mySscanf(1, tmpVals, "%d", &ntotquat);
       if (ntotquat < 1)
       {
-        cout << "Invalid Number of quaternions " << ntotquat << "\n";
-        exit(1);
+        myError("Invalid number of quaternions %d", ntotquat);
       }
       else
       {
@@ -1343,83 +1244,81 @@ int bioem_param::CalculateGridsParam(
         delete[] angprior;
         angprior = new myfloat_t[ntotquat];
       }
-      while (!input.eof())
+
+      int n = 0;
+      while (input.getline(line, 512))
       {
-        input.getline(line, 511);
-        if (n < ntotquat)
+        float q1, q2, q3, q4;
+        char tmpVals[60] = {0};
+
+        strncpy(tmpVals, line, 12);
+        mySscanf(1, tmpVals, "%f", &q1);
+
+        strncpy(tmpVals, line + 12, 12);
+        mySscanf(1, tmpVals, "%f", &q2);
+
+        strncpy(tmpVals, line + 24, 12);
+        mySscanf(1, tmpVals, "%f", &q3);
+
+        strncpy(tmpVals, line + 36, 12);
+        mySscanf(1, tmpVals, "%f", &q4);
+
+        angles[n].pos[0] = q1;
+        angles[n].pos[1] = q2;
+        angles[n].pos[2] = q3;
+        angles[n].quat4 = q4;
+
+        if (q1 < -1 || q1 > 1)
         {
-          float q1, q2, q3, q4, pp;
+          myError("Reading quaterions from list. "
+                  "Value out of range %lf row %d",
+                  q1, n);
+        }
+        if (q2 < -1 || q2 > 1)
+        {
+          myError("Reading quaterions from list. "
+                  "Value out of range %lf row %d",
+                  q2, n);
+        }
+        if (q3 < -1 || q3 > 1)
+        {
+          myError("Reading quaterions from list. "
+                  "Value out of range %lf row %d",
+                  q3, n);
+        }
+        if (q4 < -1 || q4 > 1)
+        {
+          myError("Reading quaterions from list. "
+                  "Value out of range %lf row %d",
+                  q4, n);
+        }
 
-          q1 = -99999.;
-          q2 = -99999.;
-          q3 = -99999.;
-          q4 = -99999.;
-          char tmpVals[60] = {0};
-
-          strncpy(tmpVals, line, 12);
-          sscanf(tmpVals, "%f", &q1);
-
-          strncpy(tmpVals, line + 12, 12);
-          sscanf(tmpVals, "%f", &q2);
-
-          strncpy(tmpVals, line + 24, 12);
-          sscanf(tmpVals, "%f", &q3);
-
-          strncpy(tmpVals, line + 36, 12);
-          sscanf(tmpVals, "%f", &q4);
-
-          angles[n].pos[0] = q1;
-          angles[n].pos[1] = q2;
-          angles[n].pos[2] = q3;
-          angles[n].quat4 = q4;
-
-          if (q1 < -1 || q1 > 1)
-          {
-            cout << "Error reading quaterions from list. Value out of range "
-                 << q1 << " row " << n << "\n";
-            exit(1);
-          };
-          if (q2 < -1 || q2 > 1)
-          {
-            cout << "Error reading quaterions from list. Value out of range "
-                 << q2 << " row " << n << "\n";
-            exit(1);
-          };
-          if (q3 < -1 || q3 > 1)
-          {
-            cout << "Error reading quaterions from list. Value out of range "
-                 << q3 << " row " << n << "\n";
-            exit(1);
-          };
-          if (q4 < -1 || q4 > 1)
-          {
-            cout << "Error reading quaterions from list. Value out of range "
-                 << q4 << " row " << n << "\n";
-            exit(1);
-          };
-
-          if (yespriorAngles)
-          {
-            strncpy(tmpVals, line + 48, 12);
-            sscanf(tmpVals, "%f", &pp);
-            if (pp < 0.0000001)
-              cout << "Sure you're input is correct? Very small prior.\n";
-            angprior[n] = pp;
-          }
+        if (yespriorAngles)
+        {
+          float pp;
+          strncpy(tmpVals, line + 48, 12);
+          mySscanf(1, tmpVals, "%f", &pp);
+          if (pp < 0.0000001)
+            cout << "Sure your input is correct? Very small prior.\n";
+          angprior[n] = pp;
+        }
 #ifdef DEBUG
-          //    if(yespriorAngles)
-          cout << "check orient: " << n << " " << angles[n].pos[0] << " "
-               << angles[n].pos[1] << " " << angles[n].pos[2]
-               << " prior: " << angles[n].quat4 << "\n";
+        //    if(yespriorAngles)
+        cout << "check orient: " << n << " " << angles[n].pos[0] << " "
+             << angles[n].pos[1] << " " << angles[n].pos[2]
+             << " prior: " << angles[n].quat4 << "\n";
 #endif
-        }
         n++;
-        if (ntotquat + 1 < n)
+        if (ntotquat < n)
         {
-          cout << "More quaternions than expected in header " << n
-               << " instead of " << NotUn_angles << "\n";
-          exit(1);
+          myError("More quaternions than expected in header %d instead of %d",
+                  n, NotUn_angles);
         }
+      }
+      if (ntotquat > n)
+      {
+        myError("Less quaternions than expected in header %d instead of %d", n,
+                NotUn_angles);
       }
       nTotGridAngles = ntotquat;
       voluang = 1. / (myfloat_t) ntotquat * priorMod;
@@ -1477,8 +1376,7 @@ int bioem_param::CalculateRefCTF()
   }
   else if ((endGridCTF_amp - startGridCTF_amp) < 0.)
   {
-    cout << "Error: Interval of amplitude in CTF/PSF Negative";
-    exit(1);
+    myError("Interval of amplitude in CTF/PSF negative");
   }
   if ((myfloat_t) numberGridPointsCTF_phase == 1)
   {
@@ -1486,8 +1384,7 @@ int bioem_param::CalculateRefCTF()
   }
   else if ((endGridCTF_phase - startGridCTF_phase) < 0.)
   {
-    cout << "Error: Interval of PHASE in CTF/PSF is Negative";
-    exit(1);
+    myError("Interval of phase in CTF/PSF is negative");
   }
   if ((myfloat_t) numberGridPointsEnvelop == 1)
   {
@@ -1495,8 +1392,7 @@ int bioem_param::CalculateRefCTF()
   }
   else if ((endGridEnvelop - startGridEnvelop) < 0.)
   {
-    cout << "Error: Interval of Envelope in CTF/PSF is Negative";
-    exit(1);
+    myError("Interval of envelope in CTF/PSF is negative");
   }
 
   // More checks with input parameters
@@ -1505,23 +1401,23 @@ int bioem_param::CalculateRefCTF()
                  startGridEnvelop)) > float(param_device.NumberPixels) / 2.0 &&
       usepsf)
   {
-    cout << "MAX Standard deviation of envelope is larger than Allowed KERNEL "
-            "Length\n";
-    exit(1);
+    myError("MAX standard deviation of envelope is larger than allowed "
+            "KERNEL length");
   }
-  // Envelop param should be positive
+  // Envelope param should be positive
   if (!printModel && (startGridCTF_amp < 0 || endGridCTF_amp > 1))
   {
-    cout << "Error: PSF Amplitud should be between 0 and 1\n";
-    cout << "start: " << startGridCTF_amp << "End: " << endGridCTF_amp << "\n";
-    exit(1);
+    myError("PSF amplitude should be between 0 and 1. "
+            "start: %lf end: %lf",
+            startGridCTF_amp, endGridCTF_amp);
   }
 
   if (!printModel && endGridCTF_amp < startGridCTF_amp)
   {
-    cout << "Error: values of amplitud starting is larger than ending points\n";
-    cout << "start: " << startGridCTF_amp << " End: " << endGridCTF_amp << "\n";
-    exit(1);
+
+    myError("Values of amplitude starting is larger than ending points."
+            "start: %lf end: %lf",
+            startGridCTF_amp, endGridCTF_amp);
   }
 
   for (int iamp = 0; iamp < numberGridPointsCTF_amp;
@@ -1539,12 +1435,13 @@ int bioem_param::CalculateRefCTF()
       {
         env = (myfloat_t) ienv * gridEnvelop + startGridEnvelop;
 
-        memset(localCTF, 0, param_device.NumberPixels *
-                                param_device.NumberPixels * sizeof(myfloat_t));
+        memset(localCTF, 0,
+               param_device.NumberPixels * param_device.NumberPixels *
+                   sizeof(myfloat_t));
 
         normctf = 0.0;
 
-        //	      cout <<"values " << amp << " " << phase << " " << env
+        //     cout <<"values " << amp << " " << phase << " " << env
         //<<"\n";
         // Complex CTF
         mycomplex_t *curRef = &refCTF[n * FFTMapSize];
@@ -1605,7 +1502,7 @@ int bioem_param::CalculateRefCTF()
 
               normctf += localCTF[i * param_device.NumberPixels + j];
 
-              //	    cout << "TT " << i << " " << j << " " << localCTF[i
+              //  cout << "TT " << i << " " << j << " " << localCTF[i
               //* param_device.NumberPixels + j]  << "\n";
             }
           }
@@ -1644,9 +1541,7 @@ int bioem_param::CalculateRefCTF()
 
           if (amp < 0.0000000001)
           {
-            cout << "Problem with CTF normalization AMP less than threshold < "
-                    "10^-10 \n";
-            exit(1);
+            myError("CTF normalization AMP less than threshold < 10^-10");
           }
 
           // Directly calculating CTF IN FOURIER SPACE
@@ -1674,7 +1569,7 @@ int bioem_param::CalculateRefCTF()
             }
           }
 
-          //		 for(int i = 0; i < param_device.NumberPixels *
+          // for(int i = 0; i < param_device.NumberPixels *
           // param_device.NumberFFTPixels1D; i++ )curRef[i][0]/= normctf;
         }
 
@@ -1682,7 +1577,7 @@ int bioem_param::CalculateRefCTF()
         CtfParam[n].pos[1] = phase;
         CtfParam[n].pos[2] = env;
         n++;
-        // exit(1);
+        // Exit(1);
       }
     }
   }
@@ -1691,8 +1586,7 @@ int bioem_param::CalculateRefCTF()
   myfftw_free(localout);
   if (nTotCTFs != n)
   {
-    cout << "Internal error during CTF preparation\n";
-    exit(1);
+    myError("Internal during CTF preparation");
   }
 
   // ********** Calculating normalized volume element *********
@@ -1709,7 +1603,8 @@ int bioem_param::CalculateRefCTF()
         ((2.f * (myfloat_t) param_device.maxDisplaceCenter + 1.)) /
         (2.f * (myfloat_t)(param_device.maxDisplaceCenter + 1.)) /
         (myfloat_t) numberGridPointsCTF_amp * gridEnvelop * gridCTF_phase /
-        4.f / M_PI / sqrt(2.f * M_PI) / param_device.sigmaPriorbctf / param_device.sigmaPriordefo / param_device.sigmaPrioramp;
+        4.f / M_PI / sqrt(2.f * M_PI) / param_device.sigmaPriorbctf /
+        param_device.sigmaPriordefo / param_device.sigmaPrioramp;
 
     //  cout << "VOLU " << param_device.volu  << " " << gridCTF_amp << "\n";
     // *** Number of total pixels***

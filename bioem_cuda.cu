@@ -30,7 +30,7 @@ using namespace std;
   {                                                                            \
     if ((error) != cudaSuccess)                                                \
     {                                                                          \
-      printf("CUDA Error %d / %s (%s: %d)\n", error,                           \
+      printf("CUDA Error - %d / %s (%s: %d)\n", error,                         \
              cudaGetErrorString(error), __FILE__, __LINE__);                   \
       exit(1);                                                                 \
     }                                                                          \
@@ -101,7 +101,7 @@ static const char *cufftGetErrorStrung(cufftResult error)
     CUresult __error__;                                                        \
     if ((__error__ = (call)) != CUDA_SUCCESS)                                  \
     {                                                                          \
-      printf("CUDA Driver Error %d / %s (%s %d)\n", __error__,                 \
+      printf("CUDA Driver Error - %d / %s (%s %d)\n", __error__,               \
              cuGetError(__error__), __FILE__, __LINE__);                       \
       return __error__;                                                        \
     }                                                                          \
@@ -530,9 +530,9 @@ int bioem_cuda::compareRefMaps(int iPipeline, int iOrient, int iConv,
 {
   if (startMap)
   {
-    cout << "Error startMap not implemented for GPU Code\n";
-    exit(1);
+    myError("startMap not implemented for GPU code");
   }
+
   printCudaDebugStart();
   if (GPUAsync)
   {
@@ -587,9 +587,9 @@ int bioem_cuda::compareRefMaps(int iPipeline, int iOrient, int iConv,
                                      pFFTtmp2[stream & 1], pFFTtmp[stream & 1]);
     if (err != CUFFT_SUCCESS)
     {
-      cout << "Error running CUFFT " << cufftGetErrorStrung(err) << "\n";
-      exit(1);
+      myError("Running CUFFT %s", cufftGetErrorStrung(err));
     }
+
     printCudaDebug("time for mycufftExecC2R kernel");
     if (BioEMAlgo == 1)
     {
@@ -598,9 +598,9 @@ int bioem_cuda::compareRefMaps(int iPipeline, int iOrient, int iConv,
         cuDoRefMapsFFT<<<divup(nRef, CudaThreadCount), CudaThreadCount, 0,
                          cudaStream[stream & 1]>>>(
             iOrient, iConv + conv,
-            pFFTtmp[stream & 1] +
-                conv * nRef * param.param_device.NumberPixels *
-                    param.param_device.NumberPixels,
+            pFFTtmp[stream & 1] + conv * nRef *
+                                      param.param_device.NumberPixels *
+                                      param.param_device.NumberPixels,
             &pTmp_comp_params[k + conv], pProb_device, param.param_device,
             *gpumap, nRef, offset);
         printCudaDebug("time for cuDoRefMapsFFT kernel");
@@ -617,9 +617,9 @@ int bioem_cuda::compareRefMaps(int iPipeline, int iOrient, int iConv,
         {
           init_Constoadd<<<1, 1, 0, cudaStream[stream & 1]>>>(
               refmap, iOrient,
-              pFFTtmp[stream & 1] +
-                  (refmap - offset) * param.param_device.NumberPixels *
-                      param.param_device.NumberPixels,
+              pFFTtmp[stream & 1] + (refmap - offset) *
+                                        param.param_device.NumberPixels *
+                                        param.param_device.NumberPixels,
               &pTmp_comp_params[k], pProb_device, param.param_device, *gpumap,
               (int) initialized_const[refmap]);
           initialized_const[refmap] = true;
@@ -631,23 +631,24 @@ int bioem_cuda::compareRefMaps(int iPipeline, int iOrient, int iConv,
                                       CudaThreadCount),
                                 CudaThreadCount, 0, cudaStream[stream & 1]>>>(
             refmap, iOrient, iConv, maxParallelConv,
-            pFFTtmp[stream & 1] +
-                (refmap - offset) * param.param_device.NumberPixels *
-                    param.param_device.NumberPixels,
+            pFFTtmp[stream & 1] + (refmap - offset) *
+                                      param.param_device.NumberPixels *
+                                      param.param_device.NumberPixels,
             &pTmp_comp_params[k], &pTmp_comp_blocks[refmap * Ncomp_blocks],
             pProb_device, param.param_device, *gpumap, nRef,
             param.param_device.NumberPixels -
                 param.param_device.maxDisplaceCenter);
         printCudaDebug("time for doRefMaps_GPU_Parallel kernel");
 
-        doRefMap_GPU_Reduce<<<1, divup(maxParallelConv *
-                                           param.param_device.NtotDisp,
-                                       CudaThreadCount),
+        doRefMap_GPU_Reduce<<<1,
+                              divup(maxParallelConv *
+                                        param.param_device.NtotDisp,
+                                    CudaThreadCount),
                               0, cudaStream[stream & 1]>>>(
             refmap, iOrient, iConv, maxParallelConv,
-            pFFTtmp[stream & 1] +
-                (refmap - offset) * param.param_device.NumberPixels *
-                    param.param_device.NumberPixels,
+            pFFTtmp[stream & 1] + (refmap - offset) *
+                                      param.param_device.NumberPixels *
+                                      param.param_device.NumberPixels,
             &pTmp_comp_params[k], &pTmp_comp_blocks[refmap * Ncomp_blocks],
             pProb_device, param.param_device, *gpumap, nRef,
             param.param_device.NumberPixels -
@@ -720,9 +721,9 @@ int bioem_cuda::selectCudaDevice()
     int device = atoi(getenv("GPUDEVICE"));
     if (device > count)
     {
-      printf("Invalid CUDA device specified, max device number is %d\n", count);
-      exit(1);
+      myError("Invalid CUDA device specified, max device number is %d", count);
     }
+
 #ifdef WITH_MPI
     if (device == -1)
     {
@@ -731,8 +732,7 @@ int bioem_cuda::selectCudaDevice()
 #endif
     if (device < 0)
     {
-      printf("Negative CUDA device specified: %d, invalid!\n", device);
-      exit(1);
+      myError("Negative CUDA device specified: %d", device);
     }
     bestDevice = device;
   }
@@ -870,13 +870,12 @@ int bioem_cuda::deviceInit()
                                   MULTISTREAM_LVL * sizeof(myfloat_t)));
   for (int i = 1; i < MULTISTREAM_LVL; i++)
   {
-    pFFTtmp2[i] =
-        pFFTtmp2[0] +
-        i * param.nTotParallelConv * param.nTotParallelMaps * param.FFTMapSize;
-    pFFTtmp[i] = pFFTtmp[0] +
-                 i * param.nTotParallelConv * param.nTotParallelMaps *
-                     param.param_device.NumberPixels *
-                     param.param_device.NumberPixels;
+    pFFTtmp2[i] = pFFTtmp2[0] + i * param.nTotParallelConv *
+                                    param.nTotParallelMaps * param.FFTMapSize;
+    pFFTtmp[i] = pFFTtmp[0] + i * param.nTotParallelConv *
+                                  param.nTotParallelMaps *
+                                  param.param_device.NumberPixels *
+                                  param.param_device.NumberPixels;
   }
   checkCudaErrors(cudaMalloc(&pConvMapFFT, param.nTotParallelConv *
                                                param.FFTMapSize * PIPELINE_LVL *
@@ -896,9 +895,8 @@ int bioem_cuda::deviceInit()
                        CudaThreadCount);
   if (Ncomp_blocks > CudaThreadCount)
   {
-    cout << "Error with input parameters. Check CudaThreadCount, "
-            "displacements and max number of parallel comparisons\n";
-    exit(1);
+    myError("Problems with input parameters. Check CudaThreadCount, "
+            "displacements and max number of parallel comparisons");
   }
   checkCudaErrors(
       cudaMalloc(&pTmp_comp_blocks,
@@ -981,8 +979,7 @@ int bioem_cuda::deviceStartRun()
   if (maxRef / (param.nTotParallelMaps * param.nTotParallelConv) >
       (double) SPLIT_MAPS_LVL)
   {
-    cout << "Error planning CUFFT dimensions\n";
-    exit(1);
+    myError("Planning CUFFT dimensions");
   }
   for (int j = 0; j < MULTISTREAM_LVL; j++)
   {
@@ -999,13 +996,11 @@ int bioem_cuda::deviceStartRun()
                   (param.nTotParallelMaps * param.nTotParallelConv)) !=
           CUFFT_SUCCESS)
       {
-        cout << "Error planning CUFFT\n";
-        exit(1);
+        myError("Planning CUFFT");
       }
       if (cufftSetStream(plan[i][j], cudaStream[j]) != CUFFT_SUCCESS)
       {
-        cout << "Error setting CUFFT stream\n";
-        exit(1);
+        myError("Setting CUFFT stream");
       }
     }
     if (!GPUDualStream)

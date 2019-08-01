@@ -18,7 +18,7 @@
 #define MPI_CHK(expr)                                                          \
   if (expr != MPI_SUCCESS)                                                     \
   {                                                                            \
-    fprintf(stderr, "Error in MPI function %s: %d\n", __FILE__, __LINE__);     \
+    fprintf(stderr, "Error - MPI function %s: %d\n", __FILE__, __LINE__);      \
   }
 #endif
 
@@ -108,9 +108,9 @@ bioem::bioem()
     if (BioEMAlgo == 1 && getenv("GPU") && atoi(getenv("GPU")) &&
         nProjectionsAtOnce > 1)
     {
-      printf("Warning: using parallel convolutions with GPUs can create race "
-             "condition and lead to inaccurate results. "
-             "BIOEM_PROJ_CONV_AT_ONCE is going to be set 1.\n");
+      myWarning("Using parallel convolutions with GPUs can create race "
+                "condition and lead to inaccurate results. "
+                "BIOEM_PROJ_CONV_AT_ONCE is going to be set 1.");
       nProjectionsAtOnce = 1;
     }
   }
@@ -119,6 +119,13 @@ bioem::bioem()
   else
     nProjectionsAtOnce =
         getenv("OMP_NUM_THREADS") == NULL ? 1 : atoi(getenv("OMP_NUM_THREADS"));
+
+  if (getenv("OMP_STACKSIZE") == NULL && nProjectionsAtOnce > 1)
+  {
+    myWarning("Using OMP parallelization without specifying OMP_STACKSIZE. "
+              "In case of memory issues and program crashes, consider "
+              "increasing OMP_STACKSIZE.");
+  }
 
   if (getenv("BIOEM_CUDA_THREAD_COUNT") != NULL)
     CudaThreadCount = atoi(getenv("BIOEM_CUDA_THREAD_COUNT"));
@@ -142,8 +149,8 @@ void bioem::printOptions(myoption_t *myoptions, int myoptions_length)
   {
     if (myoptions[i].hidden)
       continue;
-    if (maxlen < strlen(myoptions[i].name))
-      maxlen = strlen(myoptions[i].name);
+    if (maxlen < (int) strlen(myoptions[i].name))
+      maxlen = (int) strlen(myoptions[i].name);
   }
 
   for (int i = 0; i < myoptions_length; i++)
@@ -167,9 +174,13 @@ int bioem::readOptions(int ac, char *av[])
   // *** Inizialzing default variables ***
   std::string infile, modelfile, mapfile, Inputanglefile, Inputbestmap;
   Model.readPDB = false;
+  Model.readModelMRC = false;
   param.param_device.writeAngles = 0;
   param.dumpMap = false;
   param.loadMap = false;
+  Model.dumpModel = false;
+  Model.loadModel = false;
+  Model.printCOORDREAD = false;
   param.printModel = false;
   RefMap.readMRC = false;
   RefMap.readMultMRC = false;
@@ -191,24 +202,32 @@ int bioem::readOptions(int ac, char *av[])
        "(Optional) Read file name containing orientations", false},
       {"ReadPDB", no_argument, "(Optional) If reading model file in PDB format",
        false},
+      {"ReadModelMRC", no_argument,
+       "(Optional) If reading model file in MRC format", false},
       {"ReadMRC", no_argument,
        "(Optional) If reading particle file in MRC format", false},
-      {"ReadMultipleMRC", no_argument, "(Optional) If reading Multiple MRCs",
+      {"ReadMultipleMRC", no_argument, "(Optional) If reading multiple MRCs",
        false},
       {"DumpMaps", no_argument,
        "(Optional) Dump maps after they were read from particle-image file",
        false},
-      {"LoadMapDump", no_argument, "(Optional) Read Maps from dump option",
+      {"LoadMapDump", no_argument, "(Optional) Read maps from dump option",
+       false},
+      {"DumpModel", no_argument,
+       "(Optional) Dump model after it was read from model file", false},
+      {"LoadModelDump", no_argument, "(Optional) Read model from dump option",
+       false},
+      {"PrintCOORDREAD", no_argument, "(Optional) Print model coordinates",
        false},
       {"OutputFile", required_argument,
        "(Optional) For changing the outputfile name", false},
       {"help", no_argument, "(Optional) Produce help message", false}};
   int myoptions_length = sizeof(myoptions) / sizeof(myoption_t);
 
-  // If not all Mandatory parameters are defined
+  // If not all mandatory parameters are defined
   if ((ac < 2))
   {
-    printf("Error: Need to specify all mandatory options\n");
+    printf("Error - Need to specify all mandatory options\n");
     printOptions(myoptions, myoptions_length);
     return 1;
   }
@@ -264,14 +283,18 @@ int bioem::readOptions(int ac, char *av[])
           cout << "Reading model file in PDB format.\n";
           Model.readPDB = true;
         }
+        if (!strcmp(long_options[option_index].name, "ReadModelMRC"))
+        {
+          cout << "Reading model file in MRC format.\n";
+          Model.readModelMRC = true;
+        }
         if (!strcmp(long_options[option_index].name, "ReadOrientation"))
         {
           cout << "Reading Orientation from file: " << optarg << "\n";
-          cout << "Important! if using Quaternions, include \n";
+          cout << "Important: if using Quaternions, include ";
           cout << "QUATERNIONS keyword in INPUT PARAMETER FILE\n";
           cout << "First row in file should be the total number of "
-                  "orientations "
-                  "(int)\n";
+                  "orientations (int)\n";
           cout << "Euler angle format should be alpha (12.6f) beta (12.6f) "
                   "gamma (12.6f)\n";
           cout << "Quaternion format q1 (12.6f) q2 (12.6f) q3 (12.6f) q4 "
@@ -286,7 +309,7 @@ int bioem::readOptions(int ac, char *av[])
         }
         if (!strcmp(long_options[option_index].name, "PrintBestCalMap"))
         {
-          cout << "Reading Best Parameters from file: " << optarg << "\n";
+          cout << "Reading best parameters from file: " << optarg << "\n";
           Inputbestmap = optarg;
           param.printModel = true;
         }
@@ -297,18 +320,33 @@ int bioem::readOptions(int ac, char *av[])
         }
         if (!strcmp(long_options[option_index].name, "ReadMultipleMRC"))
         {
-          cout << "Reading Multiple MRCs.\n";
+          cout << "Reading multiple MRCs.\n";
           RefMap.readMultMRC = true;
         }
         if (!strcmp(long_options[option_index].name, "DumpMaps"))
         {
-          cout << "Dumping Maps after reading from file.\n";
+          cout << "Dumping maps after reading from file.\n";
           param.dumpMap = true;
         }
         if (!strcmp(long_options[option_index].name, "LoadMapDump"))
         {
-          cout << "Loading Map dump.\n";
+          cout << "Loading map dump.\n";
           param.loadMap = true;
+        }
+        if (!strcmp(long_options[option_index].name, "DumpModel"))
+        {
+          cout << "Dumping model after reading from file.\n";
+          Model.dumpModel = true;
+        }
+        if (!strcmp(long_options[option_index].name, "LoadModelDump"))
+        {
+          cout << "Loading model dump.\n";
+          Model.loadModel = true;
+        }
+        if (!strcmp(long_options[option_index].name, "PrintCOORDREAD"))
+        {
+          cout << "Print model coordinates.\n";
+          Model.printCOORDREAD = true;
         }
         if (!strcmp(long_options[option_index].name, "Particlesfile"))
         {
@@ -327,7 +365,7 @@ int bioem::readOptions(int ac, char *av[])
   /* Print any remaining command line arguments (not options) and exit */
   if (optind < ac)
   {
-    printf("Error: non-option ARGV-elements: ");
+    printf("Error - Non-option ARGV-elements: ");
     while (optind < ac)
       printf("%s ", av[optind++]);
     putchar('\n');
@@ -335,20 +373,13 @@ int bioem::readOptions(int ac, char *av[])
     return 1;
   }
 
-  // check for consitency in multiple MRCs
+  // check for consistency in multiple MRCs
   if (RefMap.readMultMRC && not(RefMap.readMRC))
   {
-    cout << "For Multiple MRCs command --ReadMRC is necesary too";
-    exit(1);
+    myError("For multiple MRCs command --ReadMRC is necessary too");
   }
 
-  if (!Model.readPDB)
-  {
-    cout << "Note: Reading model in simple text format (not PDB)\n";
-    cout << "----  x   y   z  radius  density ------- \n";
-  }
-
-  if (DebugOutput >= 2 && mpi_rank == 0)
+  if (DebugOutput >= 1 && mpi_rank == 0)
     timer.ResetStart();
 
   // *** Reading Parameter Input ***
@@ -356,8 +387,20 @@ int bioem::readOptions(int ac, char *av[])
   {
     // Standard definition for BioEM
     param.readParameters(infile.c_str());
+    if (DebugOutput >= 1 && mpi_rank == 0)
+    {
+      printf("Reading Input Parameters Time: %f\n",
+             timer.GetCurrentElapsedTime());
+      timer.ResetStart();
+    }
+
     // *** Reading Particle Maps Input ***
     RefMap.readRefMaps(param, mapfile.c_str());
+    if (DebugOutput >= 1 && mpi_rank == 0)
+    {
+      printf("Reading Input Maps Time: %f\n", timer.GetCurrentElapsedTime());
+      timer.ResetStart();
+    }
   }
   else
   {
@@ -367,12 +410,23 @@ int bioem::readOptions(int ac, char *av[])
 
   // *** Reading Model Input ***
   Model.readModel(param, modelfile.c_str());
+  if (DebugOutput >= 1 && mpi_rank == 0)
+  {
+    printf("Reading Input Model Time: %f\n", timer.GetCurrentElapsedTime());
+    timer.ResetStart();
+  }
 
-  cout << "**NOTE:: look at file COORDREAD to confirm that the Model "
-          "coordinates are correct\n";
-
-  if (DebugOutput >= 2 && mpi_rank == 0)
-    printf("Reading Input Data Time: %f\n", timer.GetCurrentElapsedTime());
+  // *** Printing Model Input ***
+  if (Model.printCOORDREAD)
+  {
+    Model.printCOOR();
+    if (DebugOutput >= 1 && mpi_rank == 0)
+    {
+      printf("Printing Model Coordinates Time: %f\n",
+             timer.GetCurrentElapsedTime());
+      timer.ResetStart();
+    }
+  }
 
   // Generating Grids of orientations
   if (!param.printModel)
@@ -617,11 +671,10 @@ int bioem::run()
   if (mpi_rank == 0)
     printf("\tInitializing Probabilities\n");
 
-  // Contros for MPI
+  // Controls for MPI
   if (mpi_size > param.nTotGridAngles)
   {
-    cout << "EXIT: Wrong MPI setup More MPI processes than orientations\n";
-    exit(1);
+    myError("Wrong MPI setup: more MPI processes than orientations");
   }
 
   // Inizialzing Probabilites to zero and constant to -Infinity
@@ -721,8 +774,8 @@ int bioem::run()
     int iOrientEndAtOnce =
         std::min(iOrientEnd, iOrientAtOnce + nProjectionsAtOnce);
 
-// **************************Parallel orientations for projections at
-// once***************
+    // **************************Parallel orientations for projections at
+    // once***************
 
 #pragma omp parallel for
     for (int iOrient = iOrientAtOnce; iOrient < iOrientEndAtOnce; iOrient++)
@@ -849,9 +902,9 @@ int bioem::run()
 
   deviceFinishRun();
 
-// *******************************************************************************
-// ************* Collecing all the probabilities from MPI replicas
-// ***************
+  // *******************************************************************************
+  // ************* Collecing all the probabilities from MPI replicas
+  // ***************
 
 #ifdef WITH_MPI
   if (mpi_size > 1)
@@ -900,7 +953,7 @@ int bioem::run()
           if (tmpi2[i] == -1)
           {
             if (mpi_rank == 0)
-              printf("Error: Could not find highest probability\n");
+              myWarning("Could not find highest probability");
           }
           else if (tmpi2[i] !=
                    0) // Skip if rank 0 already has highest probability
@@ -1000,7 +1053,7 @@ int bioem::run()
     angProbfile.setf(ios::fixed);
     if (param.param_device.writeAngles)
     {
-      angProbfile.open("ANG_PROB");
+      angProbfile.open(FILE_ANG_PROB);
       angProbfile << "************************* HEADER:: NOTATION "
                      "*******************************************\n";
       if (!param.doquater)
@@ -1107,14 +1160,16 @@ int bioem::run()
       else
       {
         outputProbFile
-            << "Warining! with Map " << iRefMap
+            << "Warning - RefMap: " << iRefMap
             << "Numerical Integrated Probability without constant = 0.0;\n";
-        outputProbFile << "Warining RefMap: " << iRefMap
+        outputProbFile << "Warning - RefMap: " << iRefMap
                        << "Check that constant is finite: "
                        << pProbMap.Constoadd << "\n";
-        outputProbFile << "Warining RefMap: i) check model, ii) check refmap , "
-                          "iii) check GPU on/off command inconsitency\n";
-        //	    outputProbFile << "Warning! " << iRefMap << " LogProb:  "
+        outputProbFile
+            << "Warning - RefMap: i) check model, ii) check refmap , "
+               "iii) check GPU on/off command inconsitency\n";
+        //	    outputProbFile << "Warning - RefMap " << iRefMap << "
+        // LogProb:  "
         //<< pProbMap.Constoadd + 0.5 * log(M_PI) + (1 -
         // param.param_device.Ntotpi * 0.5)*(log(2 * M_PI) + 1) +
         // log(param.param_device.volu) << " Constant: " << pProbMap.Constoadd
@@ -1221,8 +1276,8 @@ int bioem::run()
           }
         }
         K = q.size();
-        int *rev_iOrient = (int *) malloc(K * sizeof(int));
-        myprob_t *rev_logp = (myprob_t *) malloc(K * sizeof(myprob_t));
+        int *rev_iOrient = (int *) mallocchk(K * sizeof(int));
+        myprob_t *rev_logp = (myprob_t *) mallocchk(K * sizeof(myprob_t));
         for (int i = K - 1; i >= 0; i--)
         {
           rev_iOrient[i] = q.top().second;
@@ -1563,9 +1618,9 @@ int bioem::createProjection(int iMap, mycomplex_t *mapFFT)
   myfloat_t *localproj;
 
   localproj = param.fft_scratch_real[omp_get_thread_num()];
-  memset(localproj, 0, param.param_device.NumberPixels *
-                           param.param_device.NumberPixels *
-                           sizeof(*localproj));
+  memset(localproj, 0,
+         param.param_device.NumberPixels * param.param_device.NumberPixels *
+             sizeof(*localproj));
 
   //*************** Rotating the model ****************************
   //*************** Quaternions ****************************
@@ -1653,6 +1708,7 @@ int bioem::createProjection(int iMap, mycomplex_t *mapFFT)
   myfloat_t dist, rad2;
 
   myfloat_t tempden = 0.0;
+  bool firstWarning = true;
 
   for (int n = 0; n < Model.nPointsModel; n++)
   {
@@ -1668,23 +1724,23 @@ int bioem::createProjection(int iMap, mycomplex_t *mapFFT)
       if (i < 0 || j < 0 || i >= param.param_device.NumberPixels ||
           j >= param.param_device.NumberPixels)
       {
-        if (DebugOutput >= 0)
-          cout << "WARNING:::: Model Point out of Projection map: " << i << ", "
-               << j << "\n";
-        //              continue;
-        if (not param.ignorepointsout)
-          exit(1);
+        if (firstWarning)
+        {
+          myWarning("Projection %d (rank %d): point out of image size. Please "
+                    "check that the input model is correct.",
+                    mpi_rank, iMap);
+          firstWarning = false;
+        }
       }
-
-      localproj[i * param.param_device.NumberPixels + j] +=
-          Model.points[n].density;
-      tempden += Model.points[n].density;
-
-      // exit(1);
+      else
+      {
+        localproj[i * param.param_device.NumberPixels + j] +=
+            Model.points[n].density;
+        tempden += Model.points[n].density;
+      }
     }
     else
     {
-
       // Getting Centers of Sphere
       i = floor(RotatedPointsModel[n].pos[0] / param.pixelSize +
                 (myfloat_t) param.param_device.NumberPixels / 2.0f + 0.5f) -
@@ -1692,52 +1748,56 @@ int bioem::createProjection(int iMap, mycomplex_t *mapFFT)
       j = floor(RotatedPointsModel[n].pos[1] / param.pixelSize +
                 (myfloat_t) param.param_device.NumberPixels / 2.0f + 0.5f) -
           param.shiftY;
+
       // Getting the radius
       irad = int(Model.points[n].radius / param.pixelSize) + 1;
       rad2 = Model.points[n].radius * Model.points[n].radius;
 
-      if (i < irad || j < irad || i >= param.param_device.NumberPixels-irad ||
-          j >= param.param_device.NumberPixels-irad )
+      if (i < irad || j < irad || i >= param.param_device.NumberPixels - irad ||
+          j >= param.param_device.NumberPixels - irad)
       {
- 
-        if (DebugOutput >= 0)
-          cout << "WARNING::: Model Point out of Projection map: " << i << ", "
-               << j << "\n";
-        cout << "Model point " << n << "Rotation: " << iMap << " "
-             << RotatedPointsModel[n].pos[0] << " "
-             << RotatedPointsModel[n].pos[1] << " "
-             << RotatedPointsModel[n].pos[2] << "\n";
-        cout << "Original coor " << n << " " << Model.points[n].point.pos[0]
-             << " " << Model.points[n].point.pos[1] << " "
-             << Model.points[n].point.pos[2] << "\n";
-        cout << "WARNING: Angle orient " << n << " "
-             << param.angles[iMap].pos[0] << " " << param.angles[iMap].pos[1]
-             << " " << param.angles[iMap].pos[2] << " out " << i << " " << j
-             << "\n";
-        cout << "WARNING: MPI rank " << mpi_rank << "\n";
-        //              continue;
-        if (not param.ignorepointsout)
-          exit(1);
-      }else{
-
-      // Projecting over the radius
-      for (int ii = i - irad; ii < i + irad + 1; ii++)
-      {
-        for (int jj = j - irad; jj < j + irad + 1; jj++)
+        if (firstWarning)
         {
-          dist = ((myfloat_t)(ii - i) * (ii - i) + (jj - j) * (jj - j)) *
-                 param.pixelSize * param.pixelSize; // at pixel center
-          if (dist < rad2)
+          myWarning("Projection %d (rank %d): point out of image size. Please "
+                    "check that the input model is correct.",
+                    mpi_rank, iMap);
+          if (DebugOutput >= 1)
           {
-            localproj[ii * param.param_device.NumberPixels + jj] +=
-                param.pixelSize * param.pixelSize * 2 * sqrt(rad2 - dist) *
-                Model.points[n].density * 3 /
-                (4 * M_PI * Model.points[n].radius * rad2);
-            tempden += param.pixelSize * param.pixelSize * 2 *
-                       sqrt(rad2 - dist) * Model.points[n].density * 3 /
-                       (4 * M_PI * Model.points[n].radius * rad2);
+            myWarning("Model point out of Projection map: %d, %d", i, j);
+            myWarning("Model point %d Rotation: %d %lf %lf %lf", n, iMap,
+                      RotatedPointsModel[n].pos[0],
+                      RotatedPointsModel[n].pos[1],
+                      RotatedPointsModel[n].pos[2]);
+            myWarning(
+                "Original coor %d %lf %lf %lf", n, Model.points[n].point.pos[0],
+                Model.points[n].point.pos[1], Model.points[n].point.pos[2]);
+            myWarning("Angle orient %d %lf %lf %lf out %d %d", n,
+                      param.angles[iMap].pos[0], param.angles[iMap].pos[1],
+                      param.angles[iMap].pos[2], i, j);
           }
-         }
+          firstWarning = false;
+        }
+      }
+      else
+      {
+        // Projecting over the radius
+        for (int ii = i - irad; ii < i + irad + 1; ii++)
+        {
+          for (int jj = j - irad; jj < j + irad + 1; jj++)
+          {
+            dist = ((myfloat_t)(ii - i) * (ii - i) + (jj - j) * (jj - j)) *
+                   param.pixelSize * param.pixelSize; // at pixel center
+            if (dist < rad2)
+            {
+              localproj[ii * param.param_device.NumberPixels + jj] +=
+                  param.pixelSize * param.pixelSize * 2 * sqrt(rad2 - dist) *
+                  Model.points[n].density * 3 /
+                  (4 * M_PI * Model.points[n].radius * rad2);
+              tempden += param.pixelSize * param.pixelSize * 2 *
+                         sqrt(rad2 - dist) * Model.points[n].density * 3 /
+                         (4 * M_PI * Model.points[n].radius * rad2);
+            }
+          }
         }
       }
     }
@@ -1745,7 +1805,6 @@ int bioem::createProjection(int iMap, mycomplex_t *mapFFT)
 
   // To avoid numerical mismatch in projection errors we normalize by the
   // initial density
-
   myfloat_t ratioDen;
 
   ratioDen = Model.NormDen / tempden;
@@ -1786,7 +1845,6 @@ int bioem::createProjection(int iMap, mycomplex_t *mapFFT)
   // ***** Converting projection to Fourier Space for Convolution later with
   // kernel****
   // ********** Omp Critical is necessary with FFTW*******
-
   myfftw_execute_dft_r2c(param.fft_plan_r2c_forward, localproj, mapFFT);
 
   cuda_custom_timeslot_end;
@@ -1907,9 +1965,9 @@ int bioem::createConvolutedProjectionMap_noFFT(mycomplex_t *lproj,
   //***** Slow No FFT ***
   //**** Backtransforming the convoluted map it into real space
   // FFTW_C2R will destroy the input array, so we have to work on a copy here
-  memcpy(tmp, localmultFFT, sizeof(mycomplex_t) *
-                                param.param_device.NumberPixels *
-                                param.param_device.NumberFFTPixels1D);
+  memcpy(tmp, localmultFFT,
+         sizeof(mycomplex_t) * param.param_device.NumberPixels *
+             param.param_device.NumberFFTPixels1D);
 
   // **** Bringing convoluted Map to real Space ****
   myfftw_execute_dft_c2r(param.fft_plan_c2r_backward, tmp, Mapconv);
@@ -1938,9 +1996,9 @@ int bioem::createConvolutedProjectionMap_noFFT(mycomplex_t *lproj,
   // Generating random seed so the maps do not have correlated Noise
   mtr.seed(static_cast<unsigned int>(std::time(0)));
 
-  memcpy(tmp, localmultFFT, sizeof(mycomplex_t) *
-                                param.param_device.NumberPixels *
-                                param.param_device.NumberFFTPixels1D);
+  memcpy(tmp, localmultFFT,
+         sizeof(mycomplex_t) * param.param_device.NumberPixels *
+             param.param_device.NumberFFTPixels1D);
 
   // **** Bringing convoluted Map to real Space ****
   myfftw_execute_dft_c2r(param.fft_plan_c2r_backward, tmp, Mapconv);
@@ -1981,7 +2039,7 @@ int bioem::createConvolutedProjectionMap_noFFT(mycomplex_t *lproj,
   else
   {
     ofstream myexamplemap;
-    myexamplemap.open("BESTMAP");
+    myexamplemap.open(FILE_BESTMAP);
     for (int k = 0; k < param.param_device.NumberPixels; k++)
     {
       for (int j = 0; j < param.param_device.NumberPixels; j++)

@@ -15,11 +15,43 @@
 #ifndef BIOEM_DEFS_H
 #define BIOEM_DEFS_H
 
+#define myError(error, ...)                                                    \
+  {                                                                            \
+    printf("!!!!!!!!!!!!!!!!!!!!!!!!\n");                                      \
+    printf("Error - ");                                                        \
+    printf((error), ##__VA_ARGS__);                                            \
+    printf(" (%s: %d)\n", __FILE__, __LINE__);                                 \
+    printf("!!!!!!!!!!!!!!!!!!!!!!!!\n");                                      \
+    exit(1);                                                                   \
+  }
+
+#define myWarning(warning, ...)                                                \
+  {                                                                            \
+    printf("Warning - ");                                                      \
+    printf((warning), ##__VA_ARGS__);                                          \
+    printf(" (%s: %d)\n", __FILE__, __LINE__);                                 \
+  }
+
+#define mySscanf(count, buf, fmt, ...)                                         \
+  {                                                                            \
+    int rc = sscanf((buf), (fmt), ##__VA_ARGS__);                              \
+    if (rc != count)                                                           \
+      myError("line parsed by sscanf has wrong argument");                     \
+  }
+
+static const char FILE_COORDREAD[] = "COORDREAD";
+static const char FILE_ANG_PROB[] = "ANG_PROB";
+static const char FILE_BESTMAP[] = "BESTMAP";
+static const char FILE_MAPS_DUMP[] = "maps.dump";
+static const char FILE_MODEL_DUMP[] = "model.dump";
+
 #define BIOEM_PROB_DOUBLE
 //#define BIOEM_USE_DOUBLE
 //#define DEBUG
 //#define DEBUG_GPU
 //#define DEBUG_PROB
+
+#define READ_PARALLEL 1
 
 #ifndef BIOEM_PROB_DOUBLE
 typedef float myprob_t;
@@ -174,8 +206,17 @@ static inline void *mallocchk(size_t size)
   void *ptr = malloc(size);
   if (ptr == 0)
   {
-    std::cout << "Memory allocation error\n";
-    exit(1);
+    myError("Memory allocation");
+  }
+  return (ptr);
+}
+
+static inline void *callocchk(size_t size)
+{
+  void *ptr = calloc(1, size);
+  if (ptr == 0)
+  {
+    myError("Memory allocation and initialization to 0");
   }
   return (ptr);
 }
@@ -185,8 +226,7 @@ static inline void *reallocchk(void *oldptr, size_t size)
   void *ptr = realloc(oldptr, size);
   if (ptr == 0)
   {
-    std::cout << "Memory allocation error\n";
-    exit(1);
+    myError("Memory reallocation");
   }
   return (ptr);
 }

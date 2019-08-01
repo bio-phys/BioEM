@@ -18,7 +18,7 @@
 #define MPI_CHK(expr)                                                          \
   if (expr != MPI_SUCCESS)                                                     \
   {                                                                            \
-    fprintf(stderr, "Error in MPI function %s: %d\n", __FILE__, __LINE__);     \
+    fprintf(stderr, "Error - MPI function %s: %d\n", __FILE__, __LINE__);      \
   }
 #endif
 
@@ -56,10 +56,10 @@ int mpi_size = 1;
 
 int main(int argc, char *argv[])
 {
-// **************************************************************************************
-// *********************************  Main BioEM code
-// **********************************
-// ************************************************************************************
+  // **************************************************************************************
+  // *********************************  Main BioEM code
+  // **********************************
+  // ************************************************************************************
 
 #ifdef WITH_MPI
   MPI_CHK(MPI_Init(&argc, &argv));
@@ -102,10 +102,9 @@ int main(int argc, char *argv[])
       }
       else
       {
-        printf("ERROR: Model printing can be performed only if using a single "
-               "MPI process. Please change your execution to use a single MPI "
-               "process or no MPI at all.\n");
-        exit(1);
+        myError("Model printing can be performed only if using a single "
+                "MPI process. Please change your execution to use a single MPI "
+                "process or no MPI at all");
       }
     }
     else

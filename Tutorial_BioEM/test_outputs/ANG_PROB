@@ -1,5 +1,0 @@
-************************* HEADER:: NOTATION *******************************************
- RefMap:  MapNumber ; alpha[rad] - beta[rad] - gamma[rad] - logP - cal log Probability + Constant: Numerical Const.+ log (volume) + prior ang
-************************* HEADER:: NOTATION *******************************************
- 0 -1.5708 1.15928 2.19912 -68003.1 Separated: 0.0114472 683.164 -68686.3
- 0 -1.5708 1.15928 -0.942478 -68035.7 Separated: 0.0106541 650.494 -68686.3

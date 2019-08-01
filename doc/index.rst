@@ -53,6 +53,9 @@ Welcome to BioEM's documentation!
    **BioEM 2.0** Copyright (C) 2018 Pilar Cossio, Luka Stanisic,
    Markus Rampp and Gerhard Hummer.
 
+   **BioEM 2.1** Copyright (C) 2019 Pilar Cossio, Luka Stanisic,
+   Markus Rampp and Gerhard Hummer.
+
    The BioEM program is a free software, under the terms of the GNU
    General Public License as published by the Free Software
    Foundation, version 3 of the License. This program is distributed
@@ -264,13 +267,38 @@ In the **BioEM** directory there are:
 -  the *CMakeLists.txt* file that is necessary for installation with
    CMake (see below).
 
+-  the **Quaternions** directory that includes files with lists of
+   quaternions that sample uniformly the rotational group *SO3* (section
+   :ref:`intor`).
+
+.. _download_tutorials:
+
+Download BioEM-tutorials
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+The BioEM tutorials can be cloned using *git* from
+https://github.com/bio-phys/BioEM-tutorials with
+
+.. code-block:: bash
+
+   git clone https://github.com/bio-phys/BioEM-tutorials
+
+A compressed directory of the BioEM tutorials can be also directly
+downloaded from https://github.com/bio-phys/BioEM-tutorials. After
+downloading the *zip* file, uncompress it by executing
+
+.. code-block:: bash
+
+   unzip BioEM-tutorials.zip
+
+In the **BioEM-tutorials** directory there are:
+
 -  the **Tutorial\_BioEM** directory that includes the example files
    used in the tutorial (chapter :ref:`tutorial`). Inside this directory,
    there is also a directory called **MODEL\_COMPARISON**.
 
--  the **Quaternions** directory that includes files with lists of
-   quaternions that sample uniformly the rotational group *SO3* (section
-   :ref:`intor`).
+-  the **Cross-Validation\_Tutorial** directory that includes the example files
+   used in the cross-validation tests.
 
 Installing BioEM with CMake
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -376,10 +404,14 @@ should be as shown in :numref:`Listing %s<cmdline>`.
       --Inputfile       arg (Mandatory) Name of input parameter file
       --ReadOrientation arg (Optional) Read file name containing orientations
       --ReadPDB             (Optional) If reading model file in PDB format
+      --ReadModelMRC        (Optional) If reading model file in MRC format
       --ReadMRC             (Optional) If reading particle file in MRC format
-      --ReadMultipleMRC     (Optional) If reading Multiple MRCs
+      --ReadMultipleMRC     (Optional) If reading multiple MRCs
       --DumpMaps            (Optional) Dump maps after they were read from particle-image file
       --LoadMapDump         (Optional) Read Maps from dump option
+      --DumpModel           (Optional) Dump model after it was read from model file
+      --LoadModelDump       (Optional) Read model from dump option
+      --PrintCOORDREAD      (Optional) Print model coordinates
       --OutputFile      arg (Optional) For changing the outputfile name
       --help                (Optional) Produce help message
 
@@ -426,8 +458,30 @@ commandline when ``bioEM`` is executed:
 
    ./bioEM --Modelfile arg
 
-where ``arg`` is the model filename. The possible formats for the model
-(*pdb* or text) are described in section :ref:`modformat`.
+where ``arg`` is the model filename. The possible formats for the
+model (*pdb*, text or starting from **BioEM 2.1** *mrc*) are described
+in section :ref:`modformat`.
+
+Additional features to read the model in BioEM2.1
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If one has to read the same model multiple times, the following
+options might be useful. The first time the model file is read,
+include in the commandline the keyword
+
+.. option:: --DumpModel
+
+This will writeout a file *model.dump* containing the model in binary
+format, which will be useful for a faster re-reading.
+
+To read the dumped model in binary format, use
+
+.. option:: --LoadModelDump
+
+Note that the *model.dump* file should be in the same directory where
+the code is executed. Using this last option, it is not necessary to
+include :option:`--Modelfile` in the commandline. See chapter
+:ref:`tutorial` for examples.
 
 .. _partimag:
 
@@ -529,6 +583,16 @@ where ``arg`` is the desired name of the output file. This file contains
 the logarithm of the posterior probability of the model to each
 individual experimental image and the parameter set that gives a maximum
 of the posterior (see section :ref:`anaout` for its format).
+
+To check that model coordinates, radius and density are read
+correctly, inspect the COORDREAD file that can be generated using the
+following commandline keyword
+
+.. option:: --PrintCOORDREAD
+
+Note that printing of COORDREAD file has become optional starting from
+**BioEM2.1**, while in the older BioEM versions, the output file was
+always generated.
 
 .. _inparam:
 
@@ -953,6 +1017,13 @@ There are two types of model file formats that are read by BioEM:
 
    .. option:: --ReadPDB
 
+-  *mrc file:* BioEM reads the intensities from standard *mrc* files.
+   The pixel size is read from the Input-parameter file (:ref:`infile`)
+   To read mrc files the following commandline keyword is needed
+   (related to section :ref:`modfile`):
+
+   .. option:: --ReadModelMRC
+
 .. _imaformat:
 
 Formats for the particle-images
@@ -1062,18 +1133,23 @@ values of the log-posterior are finite, and the parameters that give a
 maximum of the posterior are in a reasonable range (*e.g.*, not at the
 borders of the integration limits).
 
-The output file
-
-   .. outpar:: COORDREAD
-   .. object:: COORDREAD
-
-is always generated. It is good to check
-that the model coordinates, radius and density are read correctly.
-
 Optional outputs
 ^^^^^^^^^^^^^^^^
 
 The optional output files for BioEM are:
+
+   .. outpar:: COORDREAD
+   .. object:: COORDREAD
+
+     This file used to be generated always, but in the newer BioEM
+     versions it is generated only when the option
+     :option:`--PrintCOORDREAD` is used. This output file allows to
+     check that the model coordinates, radius and density are read
+     correctly. It is reported in the following format
+
+.. code-block:: bash
+
+   Text --- Number ---- x ---- y ---- z ---- radius ---- number of electron
 
    .. outpar:: ANG_PROB
    .. object:: ANG_PROB
@@ -1786,8 +1862,8 @@ calculations that can be performed with the BioEM code. Lastly, we
 give full example of how to do model comparison using BioEM.
 
 All files mentioned in this chapter are provided in the
-**Tutorial\_BioEM** directory that comes with the BioEM package (see
-section :ref:`download`).
+**Tutorial\_BioEM** directory that comes in BioEM tutorials package (see
+section :ref:`download_tutorials`).
 
 Posterior probability using BioEM
 ---------------------------------
@@ -1817,18 +1893,15 @@ Commandline input and execution
    ``bioEM`` :option:`--Inputfile` Param_Input :option:`--Modelfile`
    Model_Text :option:`--Particlesfile` Text_Image_Form
 
-   **Outputfile:** *Output\_Probabilities*.
+   **Outputfile:** *Output\_Probabilities*
 
    .. note::
 
-      1. Check coordinates in the output :outpar:`COORDREAD` file to
-      verify that the model is correct.
-
-      2. The *txt* particle-image file can contain multiple particles
+      1. The *txt* particle-image file can contain multiple particles
       that are distinguished by the separator :inpar:`PARTICLE` (see
       section :ref:`partimag`).
 
-      3. The *Param\_Input* file is an example for a debug run. It has
+      2. The *Param\_Input* file is an example for a debug run. It has
       very few grid points to perform the integrations
       numerically. See section :ref:`Prorun`, for suggestions on
       input-parameter configurations for a production run.
@@ -1852,7 +1925,7 @@ Commandline input and execution
    Model.pdb :option:`--ReadPDB`  :option:`--Particlesfile`
    Text_Image_Form
 
-   **Outputfile:** *Output\_Probabilities*.
+   **Outputfile:** *Output\_Probabilities*
 
 -  *PDB Model - One MRC Image:* To perform the BioEM calculation for a
    single *.mrc* particle-image file.
@@ -1873,7 +1946,7 @@ Commandline input and execution
    Model.pdb :option:`--ReadPDB`  :option:`--Particlesfile`
    OneImage.mrc :option:`--ReadMRC`
 
-   **Outputfile:** *Output\_Probabilities*.
+   **Outputfile:** *Output\_Probabilities*
 
 -  *PDB Model - Multiple MRCs:* To perform the BioEM calculation, when
    multiple *mrc* files are read. In this case, the file name containing
@@ -1976,6 +2049,30 @@ Commandline input and execution
       lists that sample uniformly the rotational group in 3D space,
       *SO3*. These files are strongly *recommended* to use.
 
+-  *MRC Model - One MRC Image:* To perform the BioEM calculation for
+   a *.mrc* model and a single *.mrcs* particle-image.
+
+   **New Command:** :option:`--ReadModelMRC`
+
+   **Files:**
+
+   -  Model file: *Model_MRC.mrc*
+
+   -  Parameter file: *Param\_ModelMRC*
+
+   -  Particle-image file: *particles3.mrcs*
+
+   -  Quaternion File: *Quat\_list\_Small*
+
+   **Commandline execution:**
+
+   ``bioEM`` :option:`--Inputfile` Param_ModelMRC :option:`--Modelfile`
+   Model_MRC.mrc :option:`--ReadPDB`  :option:`--Particlesfile`
+   particle3.mrcs :option:`--ReadMRC` :option:`--ReadOrientation`
+   Quat_list_Small
+
+   **Outputfile:** *Output\_Probabilities*
+
 .. _Prorun:
 
 Input-parameter suggestions for a production run
@@ -1990,7 +2087,7 @@ in :numref:`Table %s <tableParamPro>`.
 
 **Commandline execution:**
 
-``bioEM`` :option:`--Inputfile` Param_Input_Quat
+``bioEM`` :option:`--Inputfile` Param_ProRun
 :option:`--Modelfile` Model.pdb :option:`--ReadPDB`
 :option:`--Particlesfile` Text_Image_Form
 :option:`--ReadOrientation` List_Quat_ProRun
@@ -2007,7 +2104,7 @@ in :numref:`Table %s <tableParamPro>`.
    +---------------------------------------------+
    | ``CTF_DEFOCUS``             0.5     4.5   8 |
    +---------------------------------------------+
-   | ``CTF_AMPLITUDE``          0.01   0.601   5 |
+   | ``CTF_AMPLITUDE``           0.1     0.1   1 |
    +---------------------------------------------+
    | ``SIGMA_PRIOR_B_CTF``       50.             |
    +---------------------------------------------+
@@ -2040,8 +2137,53 @@ Additional commandline options
 Several additional features using the commandline are available with
 BioEM:
 
+-  *Dump model:* This feature writes out the model in binary
+   format. This allows a faster readout in a further BioEM execution.
+
+   **New Command:** :option:`--DumpModel`
+
+   **Files:**
+
+   -  Model file: *Model.pdb*
+
+   -  Parameter file: *Param\_Input*
+
+   -  File with names of MRC files : *ListMRC*
+
+   **Commandline execution:**
+
+   ``bioEM`` :option:`--Inputfile` Param_Input :option:`--Modelfile`
+   Model.pdb :option:`--ReadPDB`  :option:`--Particlesfile` ListMRC
+   :option:`--ReadMRC`  :option:`--ReadMultipleMRC`
+   :option:`--DumpModel`
+
+   **Outputfiles:** \ *Output\_Probabilities* and *model.dump*
+
+-  *Load model:* This feature reads in the model in binary format from
+   file *model.dump* (see above). In this case, no model file is
+   necessary, but the *model.dump* file should be in the current
+   directory.
+
+   **New Command:** :option:`--LoadModelDump`
+
+   **Files:**
+
+   -  Parameter file: *Param\_Input*
+
+   -  File with names of MRC files : *ListMRC*
+
+   -  Dumped Modelfile: *model.dump*
+
+   **Commandline execution:**
+
+   ``bioEM`` :option:`--Inputfile` Param_Input
+   :option:`--Particlesfile` ListMRC :option:`--ReadMRC`
+   :option:`--ReadMultipleMRC` :option:`--LoadModelDump`
+
+   **Outputfile:** *Output\_Probabilities*
+
 -  *Dump particle-images:* This feature writes out the particle-images
-   in binary format. This allows a faster to readout in a further BioEM
+   in binary format. This allows a faster readout in a further BioEM
    execution.
 
    **New Command:** :option:`--DumpMaps`
@@ -2061,7 +2203,7 @@ BioEM:
    :option:`--ReadMRC`  :option:`--ReadMultipleMRC`
    :option:`--DumpMaps`
 
-   **Outputfiles:** \ *Output\_Probabilities* and *maps.dump*.
+   **Outputfiles:** \ *Output\_Probabilities* and *maps.dump*
 
 -  *Load particle-images:* This feature reads in the particle images in
    binary format from file *maps.dump* (see above). In this case, no
@@ -2084,6 +2226,28 @@ BioEM:
    Model.pdb :option:`--ReadPDB`  :option:`--LoadMapDump`
 
    **Outputfile:** *Output\_Probabilities*
+
+-  *Check model:* This feature writes to the *COORDREAD* output file
+   model coordinates, radius and density. It is sometimes very useful
+   to verify that the model is correct.
+
+   **New Command:** :option:`--PrintCOORDREAD`
+
+   **Files:**
+
+   -  Model file: *Model\_Text*
+
+   -  Parameter input file: *Param\_Input*
+
+   -  Particle-image file: *Text\_Image\_Form*
+
+   **Commandline execution:**
+
+   ``bioEM`` :option:`--Inputfile` Param_Input :option:`--Modelfile`
+   Model_Text :option:`--Particlesfile` Text_Image_Form
+   :option:`--PrintCOORDREAD`
+
+   **Outputfiles:** \ *Output\_Probabilities* and *COORDREAD*
 
 -  *Including prior probabilities*: To include the prior probabilities
    both for the model and orientations see the *Param\_Input\_Priors*

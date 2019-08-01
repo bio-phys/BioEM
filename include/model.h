@@ -1,7 +1,7 @@
 /* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
    < BioEM software for Bayesian inference of Electron Microscopy images>
    Copyright (C) 2016 Pilar Cossio, David Rohr, Fabio Baruffa, Markus Rampp,
-        Volker Lindenstruth and Gerhard Hummer.
+        Luka Stanisic, Volker Lindenstruth and Gerhard Hummer.
    Max Planck Institute of Biophysics, Frankfurt, Germany.
    Frankfurt Institute for Advanced Studies, Goethe University Frankfurt,
    Germany.
@@ -33,8 +33,20 @@ public:
   ~bioem_model();
 
   int readModel(bioem_param &param, const char *filemodel);
+  int printCOOR();
+
+  void readBinaryFile();
+  void writeBinaryFile();
+  void readPDBFile(const char *filemodel);
+  void readMRCFile(bioem_param &param, const char *filemodel);
+  void readTextFile(bioem_param &param, const char *filemodel);
+  void centerDensityMass();
 
   bool readPDB;
+  bool readModelMRC;
+
+  bool dumpModel, loadModel;
+  bool printCOORDREAD;
 
   myfloat_t getAminoAcidRad(char *name);
   myfloat_t getAminoAcidDensity(char *name);
