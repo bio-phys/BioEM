@@ -995,9 +995,9 @@ int bioem_param::CalculateGridsParam(
   // check if no angles will be output and prompt the user if this was their intention. 
   if ( param_device.writeAngles == 0) 
   {
-      printf ("Important, if you want BioEM to output angle probabilities after it has finished, you need to set WRITE_PROB_ANGLES to an integer in the parameter file. These probilities are needed for subsequent rounds of BioEM.\n");
+      printf ("\nImportant, if you want BioEM to output angle probabilities after it has finished, you need to set WRITE_PROB_ANGLES to an integer in the parameter file. These probilities are needed for subsequent rounds of BioEM.\n");
   }
-  printf ("The number of angle probabilities written will be %d.", param_device.writeAngles);
+  printf ("Number of angle probabilities %d.\n\n", param_device.writeAngles);
 
   if (!doquater)
   {
