@@ -409,8 +409,8 @@ int bioem_param::readParameters(const char *fileinput)
              0) // Key word if writing down each angle probabilities
     {
       token = strtok(NULL, " ");
-      printf ("Warning, will not write angle probabilities after BioEM is finished. If this is not intended please set WRITE_PROB_ANGLES to an integer in the parameter file.")
       param_device.writeAngles = int(atoi(token));
+      printf("parameter write angles %d",param_device.writeAngles);
       if (param_device.writeAngles < 0)
       {
         myError("Negative WRITE_PROB_ANGLES");
@@ -993,6 +993,11 @@ int bioem_param::CalculateGridsParam(
   // **************** Routine that pre-calculates Orientation
   // Grids**********************
   // ************************************************************************************
+  // check if no angles will be output and prompt the user if this was their intention. 
+  if ( param_device.writeAngles == 0) 
+  {
+      printf ("Important, if you want BioEM to output angle probabilities after it has finished, you need to set WRITE_PROB_ANGLES to an integer in the parameter file. These probilities are needed for subsequent rounds of BioEM.\n");
+  }
 
   if (!doquater)
   {
