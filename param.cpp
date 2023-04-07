@@ -410,7 +410,6 @@ int bioem_param::readParameters(const char *fileinput)
     {
       token = strtok(NULL, " ");
       param_device.writeAngles = int(atoi(token));
-      printf("parameter write angles %d",param_device.writeAngles);
       if (param_device.writeAngles < 0)
       {
         myError("Negative WRITE_PROB_ANGLES");
