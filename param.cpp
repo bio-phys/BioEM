@@ -409,6 +409,7 @@ int bioem_param::readParameters(const char *fileinput)
              0) // Key word if writing down each angle probabilities
     {
       token = strtok(NULL, " ");
+      printf ("Warning, will not write angle probabilities after BioEM is finished. If this is not intended please set WRITE_PROB_ANGLES to an integer in the parameter file.")
       param_device.writeAngles = int(atoi(token));
       if (param_device.writeAngles < 0)
       {
